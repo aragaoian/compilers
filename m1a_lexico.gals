@@ -1,0 +1,55 @@
+#Options
+GenerateScanner = true
+GenerateParser = true
+Language = Java
+ScannerName = Lexico
+ParserName = Sintatico
+SemanticName = Semantico
+ScannerCaseSensitive = true
+ScannerTable = Full
+Input = String
+Parser = SLR
+#RegularDefinitions
+
+#Tokens
+:[\ \n\t\r\s]+ 
+NUMBER: [0-9]+
+ID: [a-zA-Z|]+[a-zA-Z|_]*
+PRINT = ID: "print"
+
+INT = ID: "int"
+FLOAT = ID: "float"
+CHAR = ID: "char"
+STRING = ID: "string"
+
+LOG = ID: "log"
+SQRT= ID: "raiz"
+EXP: "^"
+DIV: "/"
+MUL: "*"
+SUM: "+"
+SUB: "-"
+EQUAL: "="
+
+GREATER = ">"
+LESSER = "<"
+GREATER_EQ = ">="
+LESSER_EQ = "<="
+EQUAL_CONDITION = "=="
+DIFFERENT_CONDITION = "!="
+
+AND = "&&"
+OR = "||"
+NOT = "!"
+
+"("
+")"
+"["
+"]"
+"{"
+"}"
+";"
+","
+#NonTerminals
+
+#Grammar
