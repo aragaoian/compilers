@@ -14,7 +14,7 @@ Parser = SLR
 #Tokens
 :[\ \n\t\r\s]+ 
 NUMBER: [0-9]+
-ID: [a-zA-Z|]+[a-zA-Z|_]*
+ID: [a-zA-Z]+[a-zA-Z_]*
 PRINT = ID: "print"
 
 INT = ID: "int"
@@ -23,24 +23,32 @@ CHAR = ID: "char"
 STRING = ID: "string"
 
 LOG = ID: "log"
-SQRT= ID: "raiz"
-EXP: "^"
+SQRT= ID: "sqrt"
+EXP = ID: "exp"
 DIV: "/"
 MUL: "*"
 SUM: "+"
 SUB: "-"
 EQUAL: "="
 
-GREATER = ">"
-LESSER = "<"
-GREATER_EQ = ">="
-LESSER_EQ = "<="
-EQUAL_CONDITION = "=="
-DIFFERENT_CONDITION = "!="
+GREATER: ">"
+LESSER: "<"
+GREATER_EQ: ">="
+LESSER_EQ:"<="
+EQUAL_CONDITION: "=="
+DIFFERENT_CONDITION: "!="
 
-AND = "&&"
-OR = "||"
-NOT = "!"
+RIGHT_SHIFT: ">>"
+LEFT_SHIFT: "<<"
+BITWISE_AND: "&"
+BITWISE_OR: "|"
+BITWISE_NOT: "~"
+BITWISE_XOR: "^"
+
+
+AND: "&&"
+OR: "||"
+NOT: "!"
 
 "("
 ")"
