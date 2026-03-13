@@ -15,7 +15,7 @@ Parser = SLR
 :[\ \n\t\r\s]+ 
 ID: [a-zA-Z][a-zA-Z0-9_]*
 PRINT = ID: "print"
-ONELINE_COMMENT: #.*
+ONELINE_COMMENT: [/][/].*
 MULTILINE_COMMENT: /\*([^\*]|\*+[^\*/])*\*+/
 
 // Reservados
