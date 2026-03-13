@@ -32,6 +32,9 @@ CONST = ID: "const"
 BREAK =  ID: "break"
 CONTINUE = ID: "continue"
 RETURN = ID: "return"
+DO = ID: "do"
+NEW = ID: "new"
+DEFAULT = ID: "default"
 
 // Tipos
 INT_KEY = ID: "int"
