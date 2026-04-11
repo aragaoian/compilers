@@ -63,6 +63,7 @@ MUL: "*"
 SUM: "+"
 SUB: "-"
 EQUAL: "="
+MOD: "%"
 
 // Operadores relacionais
 GREATER_EQ: ">="
