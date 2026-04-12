@@ -1,7 +1,7 @@
 #Options
 GenerateScanner = true
 GenerateParser = true
-Language = Java
+Language = C++
 ScannerName = Lexico
 ParserName = Sintatico
 SemanticName = Semantico
@@ -108,14 +108,15 @@ NOT: "!"
 <tipo_dado>
 <condicao>
 <comando>
-<variavel>
 <declaracao_atribuicao>
-<tipo_variavel>
+<variavel>
 <pos_id>
+<pos_id_resto>
 <multiplas_variaveis>
 <lista_variaveis>
-<resto_lista_variaveis>
 <vetor>
+<valor_vetor>
+<lista_valor_vetor>
 <exp>
 <exp1>
 <exp2>
@@ -135,15 +136,29 @@ NOT: "!"
 <log>
 <sqrt>
 <exponential>
+<resto_id>
 <elemento_vetor>
-<valor_vetor>
-<lista_valor_vetor>
+<entrada>
+<lista_entradas>
+<resto_entrada>
+<variavel_entrada>
+<saida>
+<lista_saidas>
+<resto_saida>
+<variavel_saida>
+<tipo_variavel_io>
 <loops>
 <for_loop>
 <condicao_for_loop>
 <lista_inc_dec_for>
 <resto_inc_dec>
-<op_inc_dec>
+<inc_dec>
+<prefixo>
+<posfixo>
+<atribuicao_for>
+<op_atr>
+<while>
+<do_while>
 <condicional>
 <bloco_condicional>
 <bloco_if_else>
@@ -161,9 +176,10 @@ NOT: "!"
 <funcao>
 <chamada_subrotina>
 <argumentos>
+<resto_argumentos>
 #Grammar
 <programa> ::= <lista_comandos>;
-<lista_comandos> ::= <comando><lista_comandos> | î;
+<lista_comandos> ::= <comando> <lista_comandos> | î;
 
 // ---------------------------------------------------------------------------------------------------
 // Auxiliares
@@ -184,7 +200,9 @@ NOT: "!"
               | <subrotina>
               | <chamada_subrotina>
               | <condicional>
-              | <loops>;
+              | <loops>
+              | <entrada> 
+              | <saida>;
 
 // ---------------------------------------------------------------------------------------------------
 // Expressões
@@ -194,18 +212,24 @@ NOT: "!"
                 | CHAR_KEY
                 | STRING_KEY;
 
-<variavel> ::= <tipo_dado> ID <tipo_variavel>;
 <declaracao_atribuicao> ::= <variavel> ";";
-<tipo_variavel> ::= <pos_id> <multiplas_variaveis>;
-<pos_id> ::= <vetor> | EQUAL <exp> | î;
+<variavel> ::= <tipo_dado> ID <pos_id> <multiplas_variaveis>;
+
+<pos_id> ::= <vetor> <pos_id_resto>
+           | EQUAL <valor_vetor>
+           | EQUAL <exp>
+           | î;
+<pos_id_resto> ::= EQUAL <valor_vetor>
+                 | EQUAL <exp>
+                 | î;
 
 <multiplas_variaveis> ::= "," <lista_variaveis> | î;
-<lista_variaveis> ::= <resto_lista_variaveis> "," <lista_variaveis> | <resto_lista_variaveis>;
-<resto_lista_variaveis> ::= ID
-                          | <vetor>
-                          | EQUAL <exp>;
+<lista_variaveis> ::= ID <pos_id> "," <lista_variaveis>
+                    | ID <pos_id>;
 
 <vetor> ::= "[" <exp> "]";
+<valor_vetor> ::= "{" <lista_valor_vetor> "}";
+<lista_valor_vetor> ::= <exp> "," <lista_valor_vetor> | <exp>;
 
 <exp> ::= <exp> OR <exp1> | <exp1>;
 <exp1> ::= <exp1> AND <exp2> | <exp2>;
@@ -217,7 +241,7 @@ NOT: "!"
 <exp7> ::= <exp7> <op_aritmetica_baixa> <exp8> | <exp8>;
 <exp8> ::= <exp8> <op_aritmetica_alta> <exp9> | <exp9>;
 <exp9> ::= <op_negativa> <exp10> | <exp10>;
-<exp10> ::= ID
+<exp10> ::= ID <resto_id>
           | INT_VALUE_DECIMAL
           | INT_VALUE_BINARY
           | INT_VALUE_HEXADECIMAL
@@ -229,12 +253,10 @@ NOT: "!"
           | <log> 
           | <sqrt> 
           | <exponential> 
-          | "(" <exp> ")"
-          | <elemento_vetor>
-          | <valor_vetor>;
+          | "(" <exp> ")";
 
 <op_rel> ::= GREATER_EQ | LESSER_EQ | EQUAL_CONDITION | DIFFERENT_CONDITION | GREATER | LESSER; 
-<op_negativa> ::= BITWISE_NOT | NOT;
+<op_negativa> ::= SUB | BITWISE_NOT | NOT;
 <op_bitwise> ::= LEFT_SHIFT | RIGHT_SHIFT;
 <op_aritmetica_baixa> ::= SUM | SUB;
 <op_aritmetica_alta> ::= MUL | DIV | MOD;
@@ -242,27 +264,53 @@ NOT: "!"
 <log> ::= LOG "(" <exp> ")";
 <sqrt> ::= SQRT "(" <exp> "," <exp> ")";
 <exponential> ::= EXP "(" <exp> "," <exp> ")";
-<elemento_vetor> ::= ID "[" <exp> "]";
-<valor_vetor> ::= "{" <lista_valor_vetor> "}";
-<lista_valor_vetor> ::= <exp> "," <lista_valor_vetor> | <exp>;
+
+<resto_id> ::= <elemento_vetor> | î;
+<elemento_vetor> ::= "[" <exp> "]";
+
+// ---------------------------------------------------------------------------------------------------
+// IO
+<entrada> ::= CIN <lista_entradas> ";";
+<lista_entradas> ::= RIGHT_SHIFT <variavel_entrada> <resto_entrada>;
+<resto_entrada> ::= RIGHT_SHIFT <variavel_entrada> <resto_entrada> | î;
+<variavel_entrada> ::= ID <tipo_variavel_io>;
+
+<saida> ::= COUT <lista_saidas> ";";
+<lista_saidas> ::= LEFT_SHIFT <variavel_saida> <resto_saida>;
+<resto_saida> ::= LEFT_SHIFT <variavel_saida> <resto_saida> | î;
+<variavel_saida> ::= ID <tipo_variavel_io>
+                  | STRING_VALUE
+                  | CHAR_VALUE;
+
+<tipo_variavel_io> ::= <vetor> | î;
 
 // ---------------------------------------------------------------------------------------------------
 // Loops
-<loops> ::= <for_loop>;
-          //| <while>
-          //| <do_while>
+<loops> ::= <for_loop>
+          | <while>
+          | <do_while>;
 
 <for_loop> ::= FOR "(" <condicao_for_loop> ")" <bloco>;
-
 <condicao_for_loop> ::= <variavel> ";" <exp> ";" <lista_inc_dec_for>;
 
-<lista_inc_dec_for> ::= <resto_inc_dec>;
-<resto_inc_dec> ::= "," ID <op_inc_dec> <exp> <resto_inc_dec> | ID <op_inc_dec> <exp>;
+<lista_inc_dec_for> ::= <inc_dec> <resto_inc_dec>;
+<resto_inc_dec> ::= "," <inc_dec> <resto_inc_dec> | î;
+<inc_dec> ::= <prefixo> 
+            | <posfixo> 
+            | <atribuicao_for>;
 
-// VOLTAR AQUI PARA VER COMO VAI FUNCIONAR O ++ e -- NA FRENTE DA VARIAVEL
-<op_inc_dec> ::= SUM SUM | SUB SUB
-              | SUM EQUAL | SUB EQUAL
-              | EQUAL;
+<prefixo> ::= SUM SUM ID
+            | SUB SUB ID;
+<posfixo> ::= ID SUM SUM
+            | ID SUB SUB;
+<atribuicao_for> ::= ID <op_atr> <exp>;
+<op_atr> ::= EQUAL
+           | SUM EQUAL
+           | SUB EQUAL;
+
+<while> ::= WHILE <condicao> <bloco>;
+
+<do_while> ::= DO <bloco> WHILE <condicao> ";";
 
 // ---------------------------------------------------------------------------------------------------
 // Condicional
@@ -274,10 +322,11 @@ NOT: "!"
 
 // ---------------------------------------------------------------------------------------------------
 // Função e Procedimento
-<subrotina> ::= <tipo_dado> ID <parametros_subrotina> <tipo_subrotina>;
+<subrotina> ::= <tipo_dado> ID <parametros_subrotina> <tipo_subrotina>
+              | VOID ID <parametros_subrotina> <tipo_subrotina>;
 
 <parametros_subrotina> ::= "(" <lista_parametros> ")";
-<lista_parametros> ::= <parametros>;
+<lista_parametros> ::= <parametros> | î;
 <parametros> ::= <tipo_dado> ID <parametro_resto>;
 <parametro_resto> ::= EQUAL <exp> <parametro_cont>
                     | <parametro_cont>;
@@ -292,4 +341,5 @@ NOT: "!"
 <funcao> ::= RETURN <exp>;
 
 <chamada_subrotina> ::= ID "(" <argumentos> ")" ";";
-<argumentos> ::= <exp> |î;
+<argumentos> ::= <exp> <resto_argumentos>;
+<resto_argumentos> ::= "," <exp> <resto_argumentos> |î;
