@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QFont monoFont("Monospace");
     monoFont.setStyleHint(QFont::TypeWriter);
-    monoFont.setPointSize(11);
+    monoFont.setPointSize(14);
 
     editor->setFont(monoFont);
     editor->setPlaceholderText("Digite o codigo fonte aqui...");

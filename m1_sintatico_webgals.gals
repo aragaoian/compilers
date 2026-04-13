@@ -138,6 +138,8 @@ NOT: "!"
 <exponential>
 <resto_id>
 <elemento_vetor>
+<atribuicao>
+<tipo_atribuicao>
 <entrada>
 <lista_entradas>
 <resto_entrada>
@@ -197,15 +199,16 @@ NOT: "!"
 // ---------------------------------------------------------------------------------------------------
 // Comandos
 <comando> ::= <declaracao_atribuicao>
+              | <atribuicao>
               | <subrotina>
               | <chamada_subrotina>
               | <condicional>
               | <loops>
               | <entrada> 
-              | <saida>;
+              | <saida> ;
 
 // ---------------------------------------------------------------------------------------------------
-// Expressões
+// Declaração, Atribuição e Expressões
 <tipo_dado> ::= INT_KEY 
                 | FLOAT_KEY
                 | BOOLEAN_KEY
@@ -267,6 +270,16 @@ NOT: "!"
 
 <resto_id> ::= <elemento_vetor> | î;
 <elemento_vetor> ::= "[" <exp> "]";
+
+// ---------------------------------------------------------------------------------------------------
+// Atribuição
+<atribuicao> ::= ID <tipo_atribuicao> ";"
+                | <prefixo> ";"
+                | <posfixo> ";";
+
+<tipo_atribuicao> ::= EQUAL <exp>
+                    | SUM EQUAL <exp>
+                    | SUB EQUAL <exp>;
 
 // ---------------------------------------------------------------------------------------------------
 // IO
