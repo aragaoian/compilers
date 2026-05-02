@@ -14,53 +14,52 @@ Parser = SLR
 #Tokens
 :[\ \n\t\r\s]+ 
 ID: [a-zA-Z][a-zA-Z0-9_]*
-PRINT = ID: "print"
 ONELINE_COMMENT: [/][/].*
 MULTILINE_COMMENT: /\*([^\*]|\*+[^\*/])*\*+/
 
 // Reservados
-IF = ID: "if"
-THEN = ID: "then"
-ELSE = ID: "else"
-TRY = ID: "try"
-CATCH = ID: "catch"
-FINALLY = ID: "finally"
-END = ID: "end"
-WHILE = ID: "while"
-FOR = ID: "for"
+IF = ID: "si"
+THEN = ID: "puis"
+ELSE = ID: "autre"
+TRY = ID: "essayer"
+CATCH = ID: "atrapper"
+FINALLY = ID: "enfin"
+END = ID: "fin"
+WHILE = ID: "alorsq"
+FOR = ID: "pour"
 CONST = ID: "const"
-BREAK =  ID: "break"
-CONTINUE = ID: "continue"
-RETURN = ID: "return"
-DO = ID: "do"
-NEW = ID: "new"
-DEFAULT = ID: "default"
-CIN = ID: "cin"
-COUT = ID: "cout"
+BREAK =  ID: "rupture"
+CONTINUE = ID: "continuer"
+RETURN = ID: "retour"
+DO = ID: "faire"
+NEW = ID: "nouveau"
+DEFAULT = ID: "defaut"
+CIN = ID: "saisir"
+COUT = ID: "sortie"
 
 // Tipos
-VOID = ID: "void"
+VOID = ID: "vide"
 
-INT_KEY = ID: "int"
+INT_KEY = ID: "ent"
 INT_VALUE_DECIMAL: [0-9]+
 INT_VALUE_BINARY: 0(b|B)[01]+
 INT_VALUE_HEXADECIMAL: 0(x|X)[0-9a-fA-F]+
 
-FLOAT_KEY = ID: "float"
+FLOAT_KEY = ID: "flotter"
 FLOAT_VALUE: [0-9]+\.[0-9]+
 
 BOOLEAN_KEY = ID: "bool"
-TRUE = ID: "true"
-FALSE = ID: "false"
+TRUE = ID: "vrai"
+FALSE = ID: "faux"
 
-CHAR_KEY = ID: "char"
+CHAR_KEY = ID: "tsimple"
 CHAR_VALUE: '[^']'
-STRING_KEY = ID: "string"
+STRING_KEY = ID: "texte"
 STRING_VALUE: \"[^\"]*\"
 
 // Operações aritméticas
 LOG = ID: "log"
-SQRT= ID: "sqrt"
+SQRT= ID: "rc"
 EXP = ID: "exp"
 DIV: "/"
 MUL: "*"
@@ -86,9 +85,9 @@ BITWISE_NOT: "~"
 BITWISE_XOR: "^"
 
 // Operadores lógicos
-AND: "&&"
-OR: "||"
-NOT: "!"
+AND: "et"
+OR: "ou"
+NOT: "pas"
 
 // Delimitadores e pontuadores
 "("
@@ -152,6 +151,7 @@ NOT: "!"
 <loops>
 <for_loop>
 <condicao_for_loop>
+<variavel_for_loop>
 <lista_inc_dec_for>
 <resto_inc_dec>
 <inc_dec>
@@ -168,6 +168,7 @@ NOT: "!"
 <parametros_subrotina>
 <lista_parametros>
 <parametros>
+<parametro_pos>
 <parametro_resto>
 <parametro_cont>
 <tipo_subrotina>
@@ -293,7 +294,9 @@ NOT: "!"
 <resto_saida> ::= LEFT_SHIFT <variavel_saida> <resto_saida> | î;
 <variavel_saida> ::= ID <tipo_variavel_io>
                   | STRING_VALUE
-                  | CHAR_VALUE;
+                  | CHAR_VALUE
+                  | INT_VALUE_DECIMAL
+                  | FLOAT_VALUE;
 
 <tipo_variavel_io> ::= <vetor> | î;
 
@@ -304,7 +307,9 @@ NOT: "!"
           | <do_while>;
 
 <for_loop> ::= FOR "(" <condicao_for_loop> ")" <bloco>;
-<condicao_for_loop> ::= <variavel> ";" <exp> ";" <lista_inc_dec_for>;
+<condicao_for_loop> ::= <variavel_for_loop> ";" <exp> ";" <lista_inc_dec_for>;
+
+<variavel_for_loop> ::= <variavel> | <atribuicao>;
 
 <lista_inc_dec_for> ::= <inc_dec> <resto_inc_dec>;
 <resto_inc_dec> ::= "," <inc_dec> <resto_inc_dec> | î;
@@ -340,7 +345,10 @@ NOT: "!"
 
 <parametros_subrotina> ::= "(" <lista_parametros> ")";
 <lista_parametros> ::= <parametros> | î;
-<parametros> ::= <tipo_dado> ID <parametro_resto>;
+<parametros> ::= <tipo_dado> ID <parametro_pos>;
+
+<parametro_pos> ::= "[" <exp> "]" <parametro_resto>
+                  | <parametro_resto>;
 <parametro_resto> ::= EQUAL <exp> <parametro_cont>
                     | <parametro_cont>;
 <parametro_cont> ::= "," <parametros> | î;
