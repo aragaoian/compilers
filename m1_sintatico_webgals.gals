@@ -19,13 +19,12 @@ MULTILINE_COMMENT: /\*([^\*]|\*+[^\*/])*\*+/
 
 // Reservados
 IF = ID: "si"
-THEN = ID: "puis"
 ELSE = ID: "autre"
 TRY = ID: "essayer"
 CATCH = ID: "atrapper"
 FINALLY = ID: "enfin"
 END = ID: "fin"
-WHILE = ID: "alorsq" // alors que
+WHILE = ID: "alorsq"
 FOR = ID: "pour"
 CONST = ID: "const"
 BREAK =  ID: "rupture"
@@ -36,6 +35,8 @@ NEW = ID: "nouveau"
 DEFAULT = ID: "defaut"
 CIN = ID: "ss" // saisir
 COUT = ID: "st" // sortie
+VARIABLE = ID: "let"
+FUNCTION = ID: "fn"
 
 // Tipos
 VOID = ID: "vide"
@@ -54,12 +55,13 @@ FALSE = ID: "faux"
 
 CHAR_KEY = ID: "tsimple"
 CHAR_VALUE: '[^']'
+
 STRING_KEY = ID: "texte"
 STRING_VALUE: \"[^\"]*\"
 
 // Operações aritméticas
 LOG = ID: "log"
-SQRT= ID: "rc" // racine carrée
+SQRT= ID: "rc"
 EXP = ID: "exp"
 DIV: "/"
 MUL: "*"
@@ -67,6 +69,10 @@ SUM: "+"
 SUB: "-"
 EQUAL: "="
 MOD: "%"
+INCREMENT: "++"
+DECREMENT: "--"
+EQUAL_SUM: "=+"
+EQUAL_SUB: "=-"
 
 // Operadores relacionais
 GREATER_EQ: ">="
@@ -100,23 +106,30 @@ NOT: "pas"
 "."
 ";"
 ":"
-"::"
+"->"
+":="
 #NonTerminals
 <programa>
 <lista_comandos>
 <bloco>
 <tipo_dado>
+<tipo_variavel>
 <condicao>
+<inc_dec>
+<prefixo>
+<posfixo>
 <comando>
-<declaracao_atribuicao>
-<variavel>
-<pos_id>
-<pos_id_resto>
-<multiplas_variaveis>
-<lista_variaveis>
-<vetor>
-<valor_vetor>
-<lista_valor_vetor>
+<declaracao>
+<identificadores>
+<lista_ids>
+<resto_declaracao>
+<init_opcional>
+<valor_inicial>
+<exp_ou_vetor>
+<multiplas_inits>
+<init_vetor>
+<lista_init_vetor>
+<multiplos_init_vetor>
 <exp>
 <exp1>
 <exp2>
@@ -137,50 +150,39 @@ NOT: "pas"
 <sqrt>
 <exponential>
 <resto_id>
-<elemento_vetor>
 <atribuicao>
+<lvalue>
+<rvalue>
 <tipo_atribuicao>
 <entrada>
-<lista_entradas>
 <resto_entrada>
 <variavel_entrada>
 <saida>
-<lista_saidas>
 <resto_saida>
 <variavel_saida>
-<tipo_variavel_io>
 <loops>
 <for_loop>
 <condicao_for_loop>
-<variavel_for_loop>
-<lista_inc_dec_for>
-<resto_inc_dec>
-<inc_dec>
-<prefixo>
-<posfixo>
-<atribuicao_for>
-<op_atr>
+<afterthought>
 <while>
 <do_while>
 <condicional>
-<bloco_condicional>
-<bloco_if_else>
+<resto_if>
+<tipo_else>
 <subrotina>
-<parametros_subrotina>
-<lista_parametros>
-<parametros>
-<parametro_pos>
-<parametro_resto>
-<parametro_cont>
 <tipo_subrotina>
-<subrotina_declarada>
-<subrotina_implementada>
+<bloco_opcional>
+<tipo_subrotina_pos>
+<parametros>
+<parametro>
+<parametro_pos>
+<lista_parametros>
+<resto_parametro>
 <tipo_retorno>
-<procedimento>
-<funcao>
-<chamada_subrotina>
+<resto_retorno>
+<chamada>
 <argumentos>
-<resto_argumentos>
+<lista_argumentos>
 #Grammar
 <programa> ::= <lista_comandos>;
 <lista_comandos> ::= <comando> <lista_comandos> | î;
@@ -189,46 +191,62 @@ NOT: "pas"
 // Auxiliares
 <bloco> ::= "{" <lista_comandos> "}";
 
-<tipo_dado> ::= INT_KEY #2
-                | FLOAT_KEY #2
-                | BOOLEAN_KEY #2
-                | CHAR_KEY #2
-                | STRING_KEY #2;
+<tipo_dado> ::= INT_KEY 
+                | FLOAT_KEY
+                | BOOLEAN_KEY
+                | CHAR_KEY
+                | STRING_KEY;
+
+<tipo_variavel> ::= "[" <exp> "]"
+                | î;
                 
 
 <condicao> ::= "(" <exp> ")";
 
+<inc_dec> ::= INCREMENT | DECREMENT;
+
+// TODO
+// Verificar como posso colocar isso dentro da <exp>
+<prefixo> ::= <inc_dec> ID <tipo_variavel>;
+<posfixo> ::= ID <tipo_variavel> <inc_dec>;
+
 // ---------------------------------------------------------------------------------------------------
 // Comandos
-<comando> ::= <declaracao_atribuicao>
-              | <atribuicao>
-              | <subrotina>
-              | <chamada_subrotina>
-              | <condicional>
-              | <loops>
-              | <entrada> 
-              | <saida> ;
+<comando> ::= <declaracao> ";"
+            | <atribuicao> ";"
+            | <entrada> ";"
+            | <saida> ";"
+            | <loops>
+            | <condicional>
+            | <prefixo> ";"
+            | <posfixo> ";"
+            | <subrotina>
+            | <chamada> ";"
+            | <tipo_retorno> ";";
 
 // ---------------------------------------------------------------------------------------------------
-// Declaração, Atribuição e Expressões
+// Declaração
 
-<declaracao_atribuicao> ::= <variavel> ";";
-<variavel> ::= ID #1 "::" <tipo_dado> <pos_id> <multiplas_variaveis>;
+<declaracao> ::= VARIABLE <identificadores> <resto_declaracao>;
 
-<pos_id> ::= <vetor> <pos_id_resto>
-           | EQUAL #4 <exp>
-           | î;
-<pos_id_resto> ::= EQUAL #4 <valor_vetor>
-                 | EQUAL #4 <exp>
-                 | î;
+<identificadores> ::= ID <lista_ids>;
+<lista_ids> ::= "," ID <lista_ids> | î;
 
-<multiplas_variaveis> ::= "," <lista_variaveis> | î;
-<lista_variaveis> ::= ID #1 <pos_id> "," <lista_variaveis>
-                    | ID #1 <pos_id>;
+<resto_declaracao> ::= ":" <tipo_dado> <init_opcional>
+                     | ":" "[" <exp> "]" <tipo_dado> <init_opcional>;
 
-<vetor> ::= "[" <exp> "]";
-<valor_vetor> ::= "{" <lista_valor_vetor> "}" #3;
-<lista_valor_vetor> ::= <exp> "," <lista_valor_vetor> | <exp>;
+<init_opcional> ::= EQUAL <valor_inicial> | î;
+
+<valor_inicial> ::= <exp_ou_vetor> <multiplas_inits>;
+<exp_ou_vetor> ::= <exp> | <init_vetor>;
+<multiplas_inits> ::= "," <exp_ou_vetor> <multiplas_inits> | î;
+
+<init_vetor> ::= "{" <lista_init_vetor> "}";
+<lista_init_vetor> ::= <exp> "," <lista_init_vetor> | <exp>;
+<multiplos_init_vetor> ::= "," <init_vetor> <multiplos_init_vetor> | î;
+
+// ---------------------------------------------------------------------------------------------------
+// Expressões
 
 <exp> ::= <exp> OR <exp1> | <exp1>;
 <exp1> ::= <exp1> AND <exp2> | <exp2>;
@@ -241,17 +259,17 @@ NOT: "pas"
 <exp8> ::= <exp8> <op_aritmetica_alta> <exp9> | <exp9>;
 <exp9> ::= <op_negativa> <exp10> | <exp10>;
 <exp10> ::= ID <resto_id>
-          | INT_VALUE_DECIMAL #3
-          | INT_VALUE_BINARY #3
-          | INT_VALUE_HEXADECIMAL #3
-          | FLOAT_VALUE #3
-          | CHAR_VALUE #3
-          | STRING_VALUE #3
-          | TRUE #3
-          | FALSE #3
+          | INT_VALUE_DECIMAL
+          | INT_VALUE_BINARY
+          | INT_VALUE_HEXADECIMAL
+          | FLOAT_VALUE
+          | CHAR_VALUE
+          | STRING_VALUE
+          | TRUE
+          | FALSE
           | <log> 
           | <sqrt> 
-          | <exponential> 
+          | <exponential>
           | "(" <exp> ")";
 
 <op_rel> ::= GREATER_EQ | LESSER_EQ | EQUAL_CONDITION | DIFFERENT_CONDITION | GREATER | LESSER; 
@@ -264,36 +282,38 @@ NOT: "pas"
 <sqrt> ::= SQRT "(" <exp> "," <exp> ")";
 <exponential> ::= EXP "(" <exp> "," <exp> ")";
 
-<resto_id> ::= <elemento_vetor> | î;
-<elemento_vetor> ::= "[" <exp> "]";
+<resto_id> ::= <tipo_variavel>
+            | "(" <argumentos> ")";
 
 // ---------------------------------------------------------------------------------------------------
 // Atribuição
-<atribuicao> ::= ID #1 <tipo_atribuicao> ";"
-                | <prefixo> ";"
-                | <posfixo> ";";
 
-<tipo_atribuicao> ::= EQUAL #3 <exp>
-                    | SUM EQUAL #4 <exp>
-                    | SUB EQUAL #4 <exp>;
+<atribuicao> ::= <lvalue> <tipo_atribuicao> <rvalue>;
+
+<lvalue> ::= ID <tipo_variavel>;
+
+<rvalue> ::= <exp>
+          | <prefixo>
+          | <posfixo>;
+
+<tipo_atribuicao> ::= EQUAL
+                    | EQUAL_SUM
+                    | EQUAL_SUB;
 
 // ---------------------------------------------------------------------------------------------------
 // IO
-<entrada> ::= CIN <lista_entradas> ";";
-<lista_entradas> ::= RIGHT_SHIFT <variavel_entrada> <resto_entrada>;
+
+<entrada> ::= CIN <resto_entrada>;
 <resto_entrada> ::= RIGHT_SHIFT <variavel_entrada> <resto_entrada> | î;
-<variavel_entrada> ::= ID #1 <tipo_variavel_io>;
+<variavel_entrada> ::= ID <tipo_variavel>;
 
-<saida> ::= COUT <lista_saidas> ";";
-<lista_saidas> ::= LEFT_SHIFT <variavel_saida> <resto_saida>;
+<saida> ::= COUT <resto_saida>;
 <resto_saida> ::= LEFT_SHIFT <variavel_saida> <resto_saida> | î;
-<variavel_saida> ::= ID #1 <tipo_variavel_io>
-                  | STRING_VALUE #3
-                  | CHAR_VALUE #3
-                  | INT_VALUE_DECIMAL #3
-                  | FLOAT_VALUE #3;
-
-<tipo_variavel_io> ::= <vetor> | î;
+<variavel_saida> ::= ID <tipo_variavel>
+                  | STRING_VALUE
+                  | CHAR_VALUE
+                  | INT_VALUE_DECIMAL
+                  | FLOAT_VALUE;
 
 // ---------------------------------------------------------------------------------------------------
 // Loops
@@ -301,25 +321,12 @@ NOT: "pas"
           | <while>
           | <do_while>;
 
+//Estrutura for 
+// pour(index, value := vetor(start, end, increment))
+
 <for_loop> ::= FOR "(" <condicao_for_loop> ")" <bloco>;
-<condicao_for_loop> ::= <variavel_for_loop> ";" <exp> ";" <lista_inc_dec_for>;
-
-<variavel_for_loop> ::= <variavel> | <atribuicao>;
-
-<lista_inc_dec_for> ::= <inc_dec> <resto_inc_dec>;
-<resto_inc_dec> ::= "," <inc_dec> <resto_inc_dec> | î;
-<inc_dec> ::= <prefixo> 
-            | <posfixo> 
-            | <atribuicao_for>;
-
-<prefixo> ::= SUM SUM ID #1
-            | SUB SUB ID #1; 
-<posfixo> ::= ID #1 SUM SUM
-            | ID #1 SUB SUB;
-<atribuicao_for> ::= ID #1 <op_atr> <exp>;
-<op_atr> ::= EQUAL #4
-           | SUM EQUAL #4
-           | SUB EQUAL #4;
+<condicao_for_loop> ::= ID "," ID ":=" ID <afterthought>;
+<afterthought> ::= "(" <exp> "," <exp> "," <exp> ")" | î;
 
 <while> ::= WHILE <condicao> <bloco>;
 
@@ -327,35 +334,40 @@ NOT: "pas"
 
 // ---------------------------------------------------------------------------------------------------
 // Condicional
-<condicional> ::= IF <condicao> <bloco> <bloco_condicional>;
+<condicional> ::= IF <condicao> <bloco> <resto_if>;
 
-<bloco_condicional> ::= <bloco_if_else> | î;
-<bloco_if_else> ::= ELSE IF <condicao> <bloco> <bloco_if_else> 
-                  | ELSE <bloco>;
+<resto_if> ::= <tipo_else> | î;
+<tipo_else> ::= ELSE IF <condicao> <bloco> <tipo_else>
+              | ELSE <bloco>;
 
 // ---------------------------------------------------------------------------------------------------
 // Função e Procedimento
-<subrotina> ::= ID #1 "::" <tipo_dado> <parametros_subrotina> <tipo_subrotina>
-              | ID #1 "::" VOID <parametros_subrotina> <tipo_subrotina>;
+<subrotina> ::= FUNCTION ID <parametros> "->" <tipo_subrotina>; 
 
-<parametros_subrotina> ::= "(" <lista_parametros> ")";
-<lista_parametros> ::= <parametros> | î;
-<parametros> ::= ID #1 "::" <tipo_dado> <parametro_pos>;
+<tipo_subrotina> ::= <tipo_subrotina_pos> <bloco_opcional>;
+<bloco_opcional> ::= <bloco> | î;
+<tipo_subrotina_pos> ::= <tipo_dado> | VOID;
 
-<parametro_pos> ::= "[" <exp> "]" <parametro_resto>
-                  | <parametro_resto>;
-<parametro_resto> ::= EQUAL #4 <exp> <parametro_cont>
-                    | <parametro_cont>;
-<parametro_cont> ::= "," <parametros> | î;
+<parametros> ::= "(" <lista_parametros> ")";
+<parametro> ::= ID ":" <tipo_variavel> <tipo_dado> <parametro_pos>;
 
-<tipo_subrotina> ::= <subrotina_declarada> | <subrotina_implementada>;
-<subrotina_declarada> ::= ";";
-<subrotina_implementada> ::= "{" <lista_comandos> <tipo_retorno> ";" "}";
+<parametro_pos> ::= EQUAL <exp> 
+                  | EQUAL <init_vetor> 
+                  | î;
 
-<tipo_retorno> ::= <procedimento> | <funcao>;
-<procedimento> ::= RETURN | î;
-<funcao> ::= RETURN <exp>;
+<lista_parametros> ::= <parametro> <resto_parametro> | î;
+<resto_parametro> ::= "," <parametro> <resto_parametro> | î;
 
-<chamada_subrotina> ::= ID #1 "(" <argumentos> ")" ";";
-<argumentos> ::= <exp> <resto_argumentos>;
-<resto_argumentos> ::= "," <exp> <resto_argumentos> |î;
+// ---------------------------------------------------------------------------------------------------
+// Tipo do Retorno
+
+<tipo_retorno> ::= RETURN <resto_retorno>;
+<resto_retorno> ::= <exp> | î;
+
+// ---------------------------------------------------------------------------------------------------
+// Chamada de Funcão
+
+<chamada> ::= ID "(" <argumentos> ")";
+
+<argumentos> ::= <exp> <lista_argumentos> | î;
+<lista_argumentos> ::= "," <exp> <lista_argumentos> | î;

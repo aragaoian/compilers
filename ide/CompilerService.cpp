@@ -1,10 +1,10 @@
 #include "CompilerService.h"
 
-#include "gals_code/LexicalError.h"
-#include "gals_code/Lexico.h"
-#include "gals_code/Semantico.h"
-#include "gals_code/Sintatico.h"
-#include "gals_code/SyntacticError.h"
+#include "../gals_code/LexicalError.h"
+#include "../gals_code/Lexico.h"
+#include "../gals_code/Semantico.h"
+#include "../gals_code/Sintatico.h"
+#include "../gals_code/SyntacticError.h"
 
 #include <sstream>
 
@@ -34,6 +34,12 @@ CompilationResult CompilerService::compile(const std::string &sourceCode) const
     {
         std::ostringstream stream;
         stream << "[ERRO SINTATICO] " << error.getMessage() << " (" 
+               << formatPosition(normalizedSource, error.getPosition()) << ")";
+        return {false, stream.str()};
+    }
+    catch (const SemanticError &error){
+        std::ostringstream stream;
+        stream << "[ERRO SEMANTICO] " << error.getMessage() << " (" 
                << formatPosition(normalizedSource, error.getPosition()) << ")";
         return {false, stream.str()};
     }
