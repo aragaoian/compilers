@@ -258,7 +258,8 @@ NOT: "pas"
 <exp7> ::= <exp7> <op_aritmetica_baixa> <exp8> | <exp8>;
 <exp8> ::= <exp8> <op_aritmetica_alta> <exp9> | <exp9>;
 <exp9> ::= <op_negativa> <exp10> | <exp10>;
-<exp10> ::= ID <resto_id>
+<exp10> ::= <exp10> "[" <exp> "]" | <exp11>;
+<exp11> ::= ID <resto_id>
           | INT_VALUE_DECIMAL
           | INT_VALUE_BINARY
           | INT_VALUE_HEXADECIMAL
