@@ -91,9 +91,9 @@ BITWISE_NOT: "~"
 BITWISE_XOR: "^"
 
 // Operadores lógicos
-AND: "et"
-OR: "ou"
-NOT: "pas"
+AND = ID: "et"
+OR = ID: "ou"
+NOT = ID: "pas"
 
 // Delimitadores e pontuadores
 "("
@@ -162,8 +162,13 @@ NOT: "pas"
 <variavel_saida>
 <loops>
 <for_loop>
-<condicao_for_loop>
-<afterthought>
+<init_for>
+<lista_init_atribuicao>
+<cond_for>
+<after_for>
+<lista_after>
+<lista_after_rest>
+<after_item>
 <while>
 <do_while>
 <condicional>
@@ -197,7 +202,7 @@ NOT: "pas"
                 | CHAR_KEY
                 | STRING_KEY;
 
-<tipo_variavel> ::= "[" <exp> "]"
+<tipo_variavel> ::= "[" <exp> "]" <tipo_variavel>
                 | î;
                 
 
@@ -232,8 +237,7 @@ NOT: "pas"
 <identificadores> ::= ID <lista_ids>;
 <lista_ids> ::= "," ID <lista_ids> | î;
 
-<resto_declaracao> ::= ":" <tipo_dado> <init_opcional>
-                     | ":" "[" <exp> "]" <tipo_dado> <init_opcional>;
+<resto_declaracao> ::= ":" <tipo_variavel> <tipo_dado> <init_opcional>;
 
 <init_opcional> ::= EQUAL <valor_inicial> | î;
 
@@ -321,12 +325,24 @@ NOT: "pas"
           | <while>
           | <do_while>;
 
-//Estrutura for 
-// pour(index, value := vetor(start, end, increment))
+<for_loop> ::= FOR "(" <init_for> ";" <cond_for> ";" <after_for> ")" <bloco>;
 
-<for_loop> ::= FOR "(" <condicao_for_loop> ")" <bloco>;
-<condicao_for_loop> ::= ID "," ID ":=" ID <afterthought>;
-<afterthought> ::= "(" <exp> "," <exp> "," <exp> ")" | î;
+<init_for> ::= <declaracao>
+            | <atribuicao> <lista_init_atribuicao>
+            | î;
+
+<lista_init_atribuicao> ::= "," <atribuicao> <lista_init_atribuicao>
+                          | î;
+
+<cond_for> ::= <exp> | î;
+<after_for> ::= <lista_after> | î;
+
+<lista_after> ::= <after_item> <lista_after_rest>;
+<lista_after_rest> ::= "," <after_item> <lista_after_rest> | î;
+
+<after_item> ::= <atribuicao>
+               | <prefixo>
+               | <posfixo>;
 
 <while> ::= WHILE <condicao> <bloco>;
 
