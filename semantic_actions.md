@@ -1,23 +1,14 @@
 #1 -> id
-#2 -> tipo
+#2 -> tipo dado
 #3 -> valor
-#4 -> variável
+#4 -> escalar
 #5 -> vetor
 #6 -> parâmetro
-#7 -> função
-#8 -> abrir escopo
-#9 -> fechar escopo
-#10 -> atribuição
-#11 -> uso
-#12 -> expressão
-#13 -> verificar tipo do indice (int)
-#14 -> verificar condição booleana
-#15 -> verificar número para funções matemáticas
-#16 -> verificar unicidade
-#17 -> marcar inicializado
-#18 -> verificar inicializacao
-#19 -> verificar compatibilidade
-#20 -> verificar retorno da funcao
-#21 -> verificar aridade (número de parâmetros)
-#22 -> verificar tipo dos argumentos
-#23 -> verificar tipo da atribuicão
+#7 -> argumento
+#8 -> função
+#9 -> abrir escopo
+#10 -> fechar escopo
+#11 -> atribuição
+#12 -> utilizacão
+#13 -> inicializacão
+#14 -> declaracão

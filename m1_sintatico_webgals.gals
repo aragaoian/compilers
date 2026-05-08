@@ -194,16 +194,16 @@ NOT = ID: "pas"
 
 // ---------------------------------------------------------------------------------------------------
 // Auxiliares
-<bloco> ::= "{" <lista_comandos> "}";
+<bloco> ::= "{" #9 <lista_comandos> "}" #10;
 
-<tipo_dado> ::= INT_KEY 
-                | FLOAT_KEY
-                | BOOLEAN_KEY
-                | CHAR_KEY
-                | STRING_KEY;
+<tipo_dado> ::= INT_KEY #2
+                | FLOAT_KEY #2
+                | BOOLEAN_KEY #2
+                | CHAR_KEY #2
+                | STRING_KEY #2;
 
-<tipo_variavel> ::= "[" <exp> "]" <tipo_variavel>
-                | î;
+<tipo_variavel> ::= "[" <exp>   "]" #5 <tipo_variavel>
+                | î #4;
                 
 
 <condicao> ::= "(" <exp> ")";
@@ -212,8 +212,8 @@ NOT = ID: "pas"
 
 // TODO
 // Verificar como posso colocar isso dentro da <exp>
-<prefixo> ::= <inc_dec> ID <tipo_variavel>;
-<posfixo> ::= ID <tipo_variavel> <inc_dec>;
+<prefixo> ::= <inc_dec> ID #1 #12 <tipo_variavel>;
+<posfixo> ::= ID #1 #12 <tipo_variavel> <inc_dec>;
 
 // ---------------------------------------------------------------------------------------------------
 // Comandos
@@ -232,14 +232,14 @@ NOT = ID: "pas"
 // ---------------------------------------------------------------------------------------------------
 // Declaração
 
-<declaracao> ::= VARIABLE <identificadores> <resto_declaracao>;
+<declaracao> ::= VARIABLE <identificadores> <resto_declaracao> #14;
 
-<identificadores> ::= ID <lista_ids>;
-<lista_ids> ::= "," ID <lista_ids> | î;
+<identificadores> ::= ID #1 <lista_ids>;
+<lista_ids> ::= "," ID #1 <lista_ids> | î;
 
 <resto_declaracao> ::= ":" <tipo_variavel> <tipo_dado> <init_opcional>;
 
-<init_opcional> ::= EQUAL <valor_inicial> | î;
+<init_opcional> ::= EQUAL <valor_inicial> #13 | î;
 
 <valor_inicial> ::= <exp_ou_vetor> <multiplas_inits>;
 <exp_ou_vetor> ::= <exp> | <init_vetor>;
@@ -262,18 +262,18 @@ NOT = ID: "pas"
 <exp7> ::= <exp7> <op_aritmetica_baixa> <exp8> | <exp8>;
 <exp8> ::= <exp8> <op_aritmetica_alta> <exp9> | <exp9>;
 <exp9> ::= <op_negativa> <exp10> | <exp10>;
-<exp10> ::= ID <resto_id>
-          | INT_VALUE_DECIMAL
-          | INT_VALUE_BINARY
-          | INT_VALUE_HEXADECIMAL
-          | FLOAT_VALUE
-          | CHAR_VALUE
-          | STRING_VALUE
-          | TRUE
-          | FALSE
+<exp10> ::= ID #1 #12 <resto_id>
+          | INT_VALUE_DECIMAL #3
+          | INT_VALUE_BINARY #3
+          | INT_VALUE_HEXADECIMAL #3
+          | FLOAT_VALUE #3
+          | CHAR_VALUE #3
+          | STRING_VALUE #3
+          | TRUE #3
+          | FALSE #3
           | <log> 
           | <sqrt> 
-          | <exponential>
+          | <exponential> 
           | "(" <exp> ")";
 
 <op_rel> ::= GREATER_EQ | LESSER_EQ | EQUAL_CONDITION | DIFFERENT_CONDITION | GREATER | LESSER; 
@@ -292,9 +292,9 @@ NOT = ID: "pas"
 // ---------------------------------------------------------------------------------------------------
 // Atribuição
 
-<atribuicao> ::= <lvalue> <tipo_atribuicao> <rvalue>;
+<atribuicao> ::= <lvalue> <tipo_atribuicao> <rvalue> #11;
 
-<lvalue> ::= ID <tipo_variavel>;
+<lvalue> ::= ID #1 #12 <tipo_variavel>;
 
 <rvalue> ::= <exp>
           | <prefixo>
@@ -309,15 +309,15 @@ NOT = ID: "pas"
 
 <entrada> ::= CIN <resto_entrada>;
 <resto_entrada> ::= RIGHT_SHIFT <variavel_entrada> <resto_entrada> | î;
-<variavel_entrada> ::= ID <tipo_variavel>;
+<variavel_entrada> ::= ID #1 <tipo_variavel>;
 
 <saida> ::= COUT <resto_saida>;
 <resto_saida> ::= LEFT_SHIFT <variavel_saida> <resto_saida> | î;
-<variavel_saida> ::= ID <tipo_variavel>
-                  | STRING_VALUE
-                  | CHAR_VALUE
-                  | INT_VALUE_DECIMAL
-                  | FLOAT_VALUE;
+<variavel_saida> ::= ID #1 <tipo_variavel>
+                  | STRING_VALUE #3
+                  | CHAR_VALUE #3
+                  | INT_VALUE_DECIMAL #3
+                  | FLOAT_VALUE #3; 
 
 // ---------------------------------------------------------------------------------------------------
 // Loops
@@ -358,21 +358,21 @@ NOT = ID: "pas"
 
 // ---------------------------------------------------------------------------------------------------
 // Função e Procedimento
-<subrotina> ::= FUNCTION ID <parametros> "->" <tipo_subrotina>; 
+<subrotina> ::= FUNCTION ID #1 #8 <parametros> "->" <tipo_subrotina>; 
 
 <tipo_subrotina> ::= <tipo_subrotina_pos> <bloco_opcional>;
 <bloco_opcional> ::= <bloco> | î;
-<tipo_subrotina_pos> ::= <tipo_dado> | VOID;
+<tipo_subrotina_pos> ::= <tipo_dado> | VOID #2;
 
 <parametros> ::= "(" <lista_parametros> ")";
-<parametro> ::= ID ":" <tipo_variavel> <tipo_dado> <parametro_pos>;
+<parametro> ::= ID #1 ":" <tipo_variavel> <tipo_dado> <parametro_pos>;
 
-<parametro_pos> ::= EQUAL <exp> 
-                  | EQUAL <init_vetor> 
+<parametro_pos> ::= EQUAL <exp> #13
+                  | EQUAL <init_vetor> #13
                   | î;
 
-<lista_parametros> ::= <parametro> <resto_parametro> | î;
-<resto_parametro> ::= "," <parametro> <resto_parametro> | î;
+<lista_parametros> ::= <parametro> #6 <resto_parametro> | î;
+<resto_parametro> ::= "," <parametro> #6 <resto_parametro> | î;
 
 // ---------------------------------------------------------------------------------------------------
 // Tipo do Retorno
@@ -383,7 +383,7 @@ NOT = ID: "pas"
 // ---------------------------------------------------------------------------------------------------
 // Chamada de Funcão
 
-<chamada> ::= ID "(" <argumentos> ")";
+<chamada> ::= ID #1 #12 "(" <argumentos> ")";
 
-<argumentos> ::= <exp> <lista_argumentos> | î;
-<lista_argumentos> ::= "," <exp> <lista_argumentos> | î;
+<argumentos> ::= <exp> #7 <lista_argumentos> | î;
+<lista_argumentos> ::= "," <exp> #7 <lista_argumentos> | î;
