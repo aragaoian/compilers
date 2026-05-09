@@ -17,7 +17,7 @@ CXX           = g++
 DEFINES       = -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB
 CFLAGS        = -pipe -O2 -Wall -Wextra -D_REENTRANT $(DEFINES)
 CXXFLAGS      = -pipe -O2 -std=gnu++1z -Wall -Wextra -D_REENTRANT $(DEFINES)
-INCPATH       = -I. -I. -I../gals_code -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++
+INCPATH       = -I. -I. -I../gals_code -I../symbols_table -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++
 QMAKE         = /usr/bin/qmake6
 DEL_FILE      = rm -f
 CHK_DIR_EXISTS= test -d
@@ -58,14 +58,16 @@ SOURCES       = main.cpp \
 		../gals_code/Constants.cpp \
 		../gals_code/Lexico.cpp \
 		../gals_code/Sintatico.cpp \
-		../gals_code/Semantico.cpp 
+		../gals_code/Semantico.cpp \
+		../symbols_table/SymbolsTableManager.cpp 
 OBJECTS       = main.o \
 		MainWindow.o \
 		CompilerService.o \
 		Constants.o \
 		Lexico.o \
 		Sintatico.o \
-		Semantico.o
+		Semantico.o \
+		SymbolsTableManager.o
 DIST          = /usr/lib/x86_64-linux-gnu/qt6/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt6/mkspecs/common/unix.conf \
 		/usr/lib/x86_64-linux-gnu/qt6/mkspecs/common/linux.conf \
@@ -149,13 +151,15 @@ DIST          = /usr/lib/x86_64-linux-gnu/qt6/mkspecs/features/spec_pre.prf \
 		../gals_code/Semantico.h \
 		../gals_code/SyntacticError.h \
 		../gals_code/Sintatico.h \
-		../gals_code/Token.h main.cpp \
+		../gals_code/Token.h \
+		../symbols_table/SymbolsTableManager.h main.cpp \
 		MainWindow.cpp \
 		CompilerService.cpp \
 		../gals_code/Constants.cpp \
 		../gals_code/Lexico.cpp \
 		../gals_code/Sintatico.cpp \
-		../gals_code/Semantico.cpp
+		../gals_code/Semantico.cpp \
+		../symbols_table/SymbolsTableManager.cpp
 QMAKE_TARGET  = ide
 DESTDIR       = 
 TARGET        = ide
@@ -337,8 +341,8 @@ distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
 	$(COPY_FILE) --parents /usr/lib/x86_64-linux-gnu/qt6/mkspecs/features/data/dummy.cpp $(DISTDIR)/
-	$(COPY_FILE) --parents MainWindow.h CompilerService.h ../gals_code/AnalysisError.h ../gals_code/Constants.h ../gals_code/LexicalError.h ../gals_code/Lexico.h ../gals_code/SemanticError.h ../gals_code/Semantico.h ../gals_code/SyntacticError.h ../gals_code/Sintatico.h ../gals_code/Token.h $(DISTDIR)/
-	$(COPY_FILE) --parents main.cpp MainWindow.cpp CompilerService.cpp ../gals_code/Constants.cpp ../gals_code/Lexico.cpp ../gals_code/Sintatico.cpp ../gals_code/Semantico.cpp $(DISTDIR)/
+	$(COPY_FILE) --parents MainWindow.h CompilerService.h ../gals_code/AnalysisError.h ../gals_code/Constants.h ../gals_code/LexicalError.h ../gals_code/Lexico.h ../gals_code/SemanticError.h ../gals_code/Semantico.h ../gals_code/SyntacticError.h ../gals_code/Sintatico.h ../gals_code/Token.h ../symbols_table/SymbolsTableManager.h $(DISTDIR)/
+	$(COPY_FILE) --parents main.cpp MainWindow.cpp CompilerService.cpp ../gals_code/Constants.cpp ../gals_code/Lexico.cpp ../gals_code/Sintatico.cpp ../gals_code/Semantico.cpp ../symbols_table/SymbolsTableManager.cpp $(DISTDIR)/
 
 
 clean: compiler_clean 
@@ -389,14 +393,17 @@ compiler_clean: compiler_moc_predefs_clean
 ####### Compile
 
 main.o: main.cpp MainWindow.h \
-		CompilerService.h
+		CompilerService.h \
+		../symbols_table/SymbolsTableManager.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
 MainWindow.o: MainWindow.cpp MainWindow.h \
-		CompilerService.h
+		CompilerService.h \
+		../symbols_table/SymbolsTableManager.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o MainWindow.o MainWindow.cpp
 
 CompilerService.o: CompilerService.cpp CompilerService.h \
+		../symbols_table/SymbolsTableManager.h \
 		../gals_code/LexicalError.h \
 		../gals_code/AnalysisError.h \
 		../gals_code/Lexico.h \
@@ -426,6 +433,7 @@ Sintatico.o: ../gals_code/Sintatico.cpp ../gals_code/Sintatico.h \
 		../gals_code/AnalysisError.h \
 		../gals_code/Semantico.h \
 		../gals_code/SemanticError.h \
+		../symbols_table/SymbolsTableManager.h \
 		../gals_code/SyntacticError.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Sintatico.o ../gals_code/Sintatico.cpp
 
@@ -433,8 +441,12 @@ Semantico.o: ../gals_code/Semantico.cpp ../gals_code/Semantico.h \
 		../gals_code/Token.h \
 		../gals_code/Constants.h \
 		../gals_code/SemanticError.h \
-		../gals_code/AnalysisError.h
+		../gals_code/AnalysisError.h \
+		../symbols_table/SymbolsTableManager.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Semantico.o ../gals_code/Semantico.cpp
+
+SymbolsTableManager.o: ../symbols_table/SymbolsTableManager.cpp ../symbols_table/SymbolsTableManager.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o SymbolsTableManager.o ../symbols_table/SymbolsTableManager.cpp
 
 ####### Install
 

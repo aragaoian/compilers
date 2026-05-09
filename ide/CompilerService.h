@@ -1,12 +1,16 @@
 #ifndef COMPILER_SERVICE_H
 #define COMPILER_SERVICE_H
 
+#include "../symbols_table/SymbolsTableManager.h"
+
 #include <string>
+#include <vector>
 
 struct CompilationResult
 {
     bool success;
     std::string message;
+    std::vector<SymbolRow> symbols;
 };
 
 class CompilerService

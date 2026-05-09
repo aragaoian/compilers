@@ -12,9 +12,21 @@ enum class DataTypes { INT, FLOAT, BOOLEAN, CHAR, STRING, VOID };
 struct MetaData {
     VariableTypes varType;
     DataTypes dataType;
+    std::string value;
     bool isUsed = false;
     bool isInitialized = false;
     int sequence = 0;
+};
+
+struct SymbolRow {
+    std::string symbol;
+    VariableTypes varType;
+    DataTypes dataType;
+    std::string value;
+    bool isUsed = false;
+    bool isInitialized = false;
+    int sequence = 0;
+    int scope;
 };
 
 struct Scope {
@@ -29,17 +41,19 @@ private:
 public:
     SymbolsTableManager();
     ~SymbolsTableManager();
+    void reset();
 
-    bool clearTable();
-    Scope *enterScope(std::unique_ptr<Scope> &currScope);
+    Scope *enterScope(Scope *currScope);
     Scope *exitScope(Scope *currScope);
     bool returnScopes();
 
-    bool insertSymbol(std::string symbolName, MetaData metaData, std::unique_ptr<Scope> &scope);
-    bool deleteSymbol(std::string symbolName, std::unique_ptr<Scope> &scope);
-    bool useSymbol(std::string symbolName, std::unique_ptr<Scope> &scope);
-    bool initializeSymbol(std::string symbolName, std::unique_ptr<Scope> &scope);
-    MetaData returnMetaData(std::string symbolName, std::unique_ptr<Scope> &scope);
+    Scope *getRootScope();
+    std::vector<SymbolRow> collectSymbolsPreorder() const;
+    bool insertSymbol(std::string symbolName, MetaData metaData, Scope *scope);
+    bool deleteSymbol(std::string symbolName, Scope *scope);
+    bool useSymbol(std::string symbolName, Scope *scope);
+    bool initializeSymbol(std::string symbolName, Scope *scope);
+    MetaData returnMetaData(std::string symbolName, Scope *scope);
 
 };
 
