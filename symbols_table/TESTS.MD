@@ -1,6 +1,7 @@
 # Testes
 
-> [!WARNING] Tirar os comentários '//'.
+> [!WARNING]
+> Retirar os comentários '//' quando for executar os comandos.
 
 1. Inserção na tabela
 ```

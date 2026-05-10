@@ -28,7 +28,8 @@
 
 #### Tabela de compatibilidade - Operações
 
-> [!NOTE] Para a coluna de 'Resultado', somente SUCESSO e AVISO são considerados
+> [!NOTE] 
+> Para a coluna de 'Resultado', somente SUCESSO e AVISO são considerados
 
 | Tipos (A,B) | Sucesso | Aviso | Erro | Resultado |
 |-------------|---------|-------|------|-----------|
@@ -71,4 +72,5 @@
 | string,char |    X (vira string)     |       |      |
 | string,string|   X     |       |      |
 
-> [!NOTE] Aqui também combre os casos de compatiblidade de funções (e.g função de tipo VOID com retorno de int)
+> [!NOTE] 
+> Aqui também combre os casos de compatiblidade de funções (e.g função de tipo VOID com retorno de int)
