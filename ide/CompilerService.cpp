@@ -30,6 +30,7 @@ CompilationResult CompilerService::compile(const std::string &sourceCode) const
     {
         sintatico.parse(&lexico, &semantico);
         semantico.logDeclaredButNotUsed();
+        semantico.logNonInitializedVariables();
         return {true, appendSemanticMessages("[SUCESSO] Compilacao concluida sem erros lexicos/sintaticos.", semantico.getMessages()), semantico.getSymbolRows()};
     }
     catch (const LexicalError &error)

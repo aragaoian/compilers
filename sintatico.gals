@@ -243,7 +243,7 @@ NOT = ID: "pas"
 
 <resto_declaracao> ::= ":" <tipo_variavel> <tipo_dado> <init_opcional>;
 
-<init_opcional> ::= EQUAL <valor_inicial> #13 | î;
+<init_opcional> ::= EQUAL #20 <valor_inicial> #13 #21 | î;
 
 <valor_inicial> ::= <exp_ou_vetor> #19 <multiplas_inits>;
 <exp_ou_vetor> ::= <exp> | <init_vetor>;
@@ -371,8 +371,8 @@ NOT = ID: "pas"
 <parametros> ::= "(" <lista_parametros> ")";
 <parametro> ::= ID #1 ":" <tipo_variavel> <tipo_dado> <parametro_pos>;
 
-<parametro_pos> ::= EQUAL <exp> #13
-                  | EQUAL <init_vetor> #13
+<parametro_pos> ::= EQUAL #20 <exp> #13 #21
+                  | EQUAL #20 <init_vetor> #13 #21
                   | î;
 
 <lista_parametros> ::= <parametro> #6 <resto_parametro> | î;

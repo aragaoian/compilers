@@ -22,6 +22,12 @@ let d, e, f: bool = vrai, faux, vrai, vrai;
 ```
 
 ```
+// NÂO PASSOU
+let a: ent;
+a = 1;
+```
+
+```
 // PASSOU
 let a, b, c: [3]ent;
 let d, e: [2]ent = {1, 2}, {3, 4};
@@ -45,12 +51,12 @@ fn test -> ent(){
 // PASSOU
 fn test1-> bool(arg1: ent, arg2: ent = 1);
 
-// NÃO TESTADO
+// NÃO TESTADO POIS NÃO SUPORTA VERIFICAR RETORNO DA FUNÇÃO
 fn main-> ent(arg1: ent, arg2: ent = 1){
     retour 1;
 }
 
-// NÃO TESTADO
+// NÃO TESTADO POIS NÃO SUPORTA VERIFICAR RETORNO DA FUNÇÃO
 fn main2-> ent(arg3: [1]ent, arg4: [1]ent = {1}){
     retour vrai;
 }
@@ -178,12 +184,12 @@ let b: ent = a;
 
 6. Compatibilidade de tipos em atribuicoes
 ```
-// NÃO TESTADO
+// PASSOU
 let a: ent = 1;
 let b: bool = vrai;
 let c: texte = "abc";
 
-// NÃO TESTADO
+// PASSOU
 let d: ent = b;
 let e: bool = c;
 let f: tsimple = 1;
@@ -191,7 +197,7 @@ let f: tsimple = 1;
 
 7. Compatibilidade de tipos em expressoes
 ```
-// NÃO TESTADO
+// NÃO 
 let a: ent = 1 + 2;
 let b: flotter = 1.5 + 2.5;
 let c: texte = "a" + "b";

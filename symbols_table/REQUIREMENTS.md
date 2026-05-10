@@ -7,7 +7,8 @@
 4. Inserir parâmetro [X]
 5. Inserção múltipla de escalar [X]
 6. Inserção múltipla de vetor [X]
-7. Identificar expressões []
+7. Identificar expressões [X]
+8. Atribuição [] -> não funciona ainda
 
 ### (2 pontos) Verificar se os identificadores estão declarados no escopo em que são usados no programa, sem vazar para escopos proibidos
 1. Fazer função de validação de escopo [X]
@@ -19,12 +20,15 @@
 1. Fazer função de declaredButNotUsed [X]
 
 ### (1 ponto) Avisar (não restringir, apenas avisar) se os identificadores estão sendo usados sem estar inicializados (uso de lixo de memória)
-1. Adicionar na ação semântica de uso verificação de 'mem garbage' [X]
+1. Criar função para reuniar isso 'mem garbage' [X]
 
 ### (1 ponto) Acrescentar na interface da IDE um componente para visualização da tabela
 1. Criação da tabela semântica pelo qt [X]
 
 ### (2 pontos) Verificar a compatibilidade de tipos nas expressões (por exemplo, evitar multiplicação de strings) e nas atribuições.
+
+> [!WARNING]
+> A validação da compatiblidade do retorno ainda não funciona
 
 #### Tabela de compatibilidade - Operações
 

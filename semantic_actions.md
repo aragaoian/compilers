@@ -1,19 +1,25 @@
-#1 -> id
-#2 -> tipo dado
-#3 -> valor
-#4 -> escalar
-#5 -> vetor
-#6 -> parâmetro
-#7 -> argumento
-#8 -> função
-#9 -> abrir escopo
-#10 -> fechar escopo
-#11 -> atribuição
-#12 -> utilizacão
-#13 -> inicializacão
-#14 -> declaracão
-#15 -> tamanho do vetor
-#16 -> abrir escopo de função
-#17 -> fechar escopo de função
-#18 -> contador de ids
-#19 -> contador de inicializadores
+| Ação semântica | Descrição |
+|---|---|
+| #1 | id |
+| #2 | tipo dado |
+| #3 | valor |
+| #4 | escalar |
+| #5 | vetor |
+| #6 | parâmetro |
+| #7 | argumento |
+| #8 | função |
+| #9 | abrir escopo |
+| #10 | fechar escopo |
+| #11 | atribuição |
+| #12 | utilizacão |
+| #13 | inicializacão |
+| #14 | declaracão |
+| #15 | tamanho do vetor |
+| #16 | abrir escopo de função |
+| #17 | fechar escopo de função |
+| #18 | contador de ids |
+| #19 | contador de inicializadores |
+| #20 | inicio de inicialização |
+| #21 | fim de inicialização |
+| #22 | pegar operador |
+| #23 | verificação da expresão |
