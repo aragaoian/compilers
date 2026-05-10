@@ -26,8 +26,10 @@ let d, e, f: bool = vrai, faux, vrai, vrai;
 let a, b, c: [3]ent;
 let d, e: [2]ent = {1, 2}, {3, 4};
 
-// NÃO PASSOU (arrumar)
+// PASSOU
 let d, e: [2]ent = {1, 2}, {3, 4}, {1, 3};
+
+// PASSOU
 let d, e: [2]ent = {1, 2}, {3, 4, 4, 5};
 ``` 
 

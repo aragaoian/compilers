@@ -274,7 +274,10 @@ void Semantico::executeAction(int action, const Token *token)
                     if (paramKind == VariableTypes::ARRAY) {
                         int arrSize = pmt.arrSize;
                         if (static_cast<int>(literals.size()) < arrSize) {
-                            throw SemanticError("Inicializacao do vetor incompleta!", token->getPosition());
+                            throw SemanticError("Inicialização do vetor incompleta!", token->getPosition());
+                        }
+                        if (static_cast<int>(literals.size()) > arrSize) {
+                            throw SemanticError("Inicialização do vetor excede o tamanho!", token->getPosition());
                         }
 
                         for (int j = 0; j < arrSize; j++) {
@@ -340,7 +343,7 @@ void Semantico::executeAction(int action, const Token *token)
             idsOrdered.reserve(static_cast<std::size_t>(idCount));
             for (int i = 0; i < idCount; i++) {
                 if (ids.empty()) {
-                    throw SemanticError("Declaracao invalida.", token->getPosition());
+                    throw SemanticError("Declaração inválida!", token->getPosition());
                 }
                 idsOrdered.push_back(ids.top());
                 ids.pop();
@@ -353,7 +356,11 @@ void Semantico::executeAction(int action, const Token *token)
                 initGroups.reserve(static_cast<std::size_t>(groups));
                 for (int i = 0; i < groups; i++) {
                     if (static_cast<int>(literals.size()) < mt.arrSize) {
-                        throw SemanticError("Inicializacao do vetor incompleta!", token->getPosition());
+                        throw SemanticError("Inicialização do vetor incompleta!", token->getPosition());
+                    }
+
+                    if(initCount > idCount){
+                        throw SemanticError("Quantidade de inicializadores de vetor maior que quantidade de IDs", token->getPosition());
                     }
 
                     std::vector<std::string> groupValues;
@@ -375,6 +382,9 @@ void Semantico::executeAction(int action, const Token *token)
                         }
                     }
                     initGroups.push_back(groupValue);
+                }
+                if (!literals.empty()) {
+                    throw SemanticError("Inicialização do vetor excede o tamanho!", token->getPosition());
                 }
                 std::reverse(initGroups.begin(), initGroups.end());
 
@@ -434,7 +444,7 @@ void Semantico::executeAction(int action, const Token *token)
             if(mt.varType == VariableTypes::ARRAY){
                 int arrSize = mt.arrSize;
                 if (static_cast<int>(literals.size()) < arrSize) {
-                    throw SemanticError("Inicializacao do vetor incompleta!", token->getPosition());
+                    throw SemanticError("Inicialização do vetor incompleta!", token->getPosition());
                 }
                 
                 for(int i = 0; i < arrSize; i++){
@@ -567,7 +577,7 @@ void Semantico::logDeclaredButNotUsed() {
     std::vector<SymbolRow> symbols = stManager.collectSymbolsPreorder();
     for(SymbolRow symbol: symbols){
         if(symbol.isUsed) continue;
-        std::string formatted = "[AVISO] " + varTypeEnumToString(symbol.varType) + " " + symbol.symbol + " esta declarada mas nao utilizada.";
+        std::string formatted = "[AVISO] " + varTypeEnumToString(symbol.varType) + " " + symbol.symbol + " está declarada mas não está sendo utilizada.";
         messages.push_back(formatted);
     }
 }
