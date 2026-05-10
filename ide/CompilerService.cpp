@@ -19,30 +19,38 @@ CompilationResult CompilerService::compile(const std::string &sourceCode) const
     Semantico semantico;
     semantico.reset();
 
+    auto appendSemanticMessages = [](std::string base, const std::vector<std::string> &messages) {
+        for (const auto &msg : messages) {
+            base += "\n" + msg;
+        }
+        return base;
+    };
+
     try
     {
         sintatico.parse(&lexico, &semantico);
-        return {true, "[SUCESSO] Compilacao concluida sem erros lexicos/sintaticos.", semantico.getSymbolRows()};
+        semantico.logDeclaredButNotUsed();
+        return {true, appendSemanticMessages("[SUCESSO] Compilacao concluida sem erros lexicos/sintaticos.", semantico.getMessages()), semantico.getSymbolRows()};
     }
     catch (const LexicalError &error)
     {
         std::ostringstream stream;
         stream << "[ERRO LEXICO] " << error.getMessage() << " (" 
              << formatPosition(normalizedSource, error.getPosition()) << ")";
-        return {false, stream.str(), semantico.getSymbolRows()};
+        return {false, appendSemanticMessages(stream.str(), semantico.getMessages()), semantico.getSymbolRows()};
     }
     catch (const SyntacticError &error)
     {
         std::ostringstream stream;
         stream << "[ERRO SINTATICO] " << error.getMessage() << " (" 
                << formatPosition(normalizedSource, error.getPosition()) << ")";
-        return {false, stream.str(), semantico.getSymbolRows()};
+        return {false, appendSemanticMessages(stream.str(), semantico.getMessages()), semantico.getSymbolRows()};
     }
     catch (const SemanticError &error){
         std::ostringstream stream;
         stream << "[ERRO SEMANTICO] " << error.getMessage() << " (" 
                << formatPosition(normalizedSource, error.getPosition()) << ")";
-        return {false, stream.str(), semantico.getSymbolRows()};
+        return {false, appendSemanticMessages(stream.str(), semantico.getMessages()), semantico.getSymbolRows()};
     }
 }
 

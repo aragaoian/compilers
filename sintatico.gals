@@ -114,6 +114,7 @@ NOT = ID: "pas"
 <bloco>
 <tipo_dado>
 <tipo_variavel>
+<dimensoes>
 <condicao>
 <inc_dec>
 <prefixo>
@@ -202,8 +203,11 @@ NOT = ID: "pas"
                 | CHAR_KEY #2
                 | STRING_KEY #2;
 
-<tipo_variavel> ::= "[" <exp>   "]" #5 <tipo_variavel>
+<tipo_variavel> ::= <dimensoes> #5
                 | î #4;
+
+<dimensoes> ::= "[" <exp> "]" #15 <dimensoes>
+             | "[" <exp> "]" #15;
                 
 
 <condicao> ::= "(" <exp> ")";
@@ -234,16 +238,16 @@ NOT = ID: "pas"
 
 <declaracao> ::= VARIABLE <identificadores> <resto_declaracao> #14;
 
-<identificadores> ::= ID #1 <lista_ids>;
-<lista_ids> ::= "," ID #1 <lista_ids> | î;
+<identificadores> ::= ID #1 #18 <lista_ids>;
+<lista_ids> ::= "," ID #1 #18 <lista_ids> | î;
 
 <resto_declaracao> ::= ":" <tipo_variavel> <tipo_dado> <init_opcional>;
 
 <init_opcional> ::= EQUAL <valor_inicial> #13 | î;
 
-<valor_inicial> ::= <exp_ou_vetor> <multiplas_inits>;
+<valor_inicial> ::= <exp_ou_vetor> #19 <multiplas_inits>;
 <exp_ou_vetor> ::= <exp> | <init_vetor>;
-<multiplas_inits> ::= "," <exp_ou_vetor> <multiplas_inits> | î;
+<multiplas_inits> ::= "," <exp_ou_vetor> #19 <multiplas_inits> | î;
 
 <init_vetor> ::= "{" <lista_init_vetor> "}";
 <lista_init_vetor> ::= <exp> "," <lista_init_vetor> | <exp>;
@@ -358,11 +362,11 @@ NOT = ID: "pas"
 
 // ---------------------------------------------------------------------------------------------------
 // Função e Procedimento
-<subrotina> ::= FUNCTION ID #1 #8 <parametros> "->" <tipo_subrotina>; 
+<subrotina> ::= FUNCTION ID #1 #8 "->" <tipo_subrotina> #16 <parametros> <bloco_opcional>; 
 
-<tipo_subrotina> ::= <tipo_subrotina_pos> <bloco_opcional>;
-<bloco_opcional> ::= <bloco> | î;
-<tipo_subrotina_pos> ::= <tipo_dado> | VOID #2;
+<tipo_subrotina> ::= <tipo_dado> | VOID #2;
+
+<bloco_opcional> ::= <bloco> #13 #14 #17| ";" #14 #17;
 
 <parametros> ::= "(" <lista_parametros> ")";
 <parametro> ::= ID #1 ":" <tipo_variavel> <tipo_dado> <parametro_pos>;

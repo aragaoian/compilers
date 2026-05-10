@@ -1,7 +1,26 @@
 #include "Semantico.h"
 #include "Constants.h"
 
+#include <algorithm>
 #include <iostream>
+
+static std::string varTypeEnumToString(VariableTypes varType){
+    switch (varType)
+    {
+    case VariableTypes::SCALAR:
+        return "Variável";
+    case VariableTypes::ARRAY:
+        return "Variável";
+    case VariableTypes::FUNCTION:
+        return "Função";
+    case VariableTypes::PARAMETER:
+        return "Parâmetro";
+    case VariableTypes::ARGUMENT:
+        return "Argumento";
+    default:
+        return "Desconhecido";
+    }
+}
 
 static DataTypes dataTypeFromToken(TokenId tokenId)
 {
@@ -54,10 +73,21 @@ void Semantico::reset()
     while (!literals.empty()) {
         literals.pop();
     }
+    while(!arrSizes.empty()){
+        arrSizes.pop();
+    }
+    pendingArraySize = 1;
+    hasPendingArraySize = false;
 
     isAttribution = false;
     isInitialized = false;
     isUsed = false;
+    pendingIdsCount = 0;
+    pendingInitCount = 0;
+    pendingIdsCount = 0;
+    pendingInitCount = 0;
+    skipNextBlockScope = false;
+    skipNextBlockExit = false;
 
     pendingIds.clear();
     pendingArgs.clear();
@@ -65,6 +95,31 @@ void Semantico::reset()
 
     currentFunctionName.clear();
     currentReturnType = DataTypes::VOID;
+
+    messages.clear();
+}
+
+std::vector<std::string> Semantico::getMessages() const
+{
+    return messages;
+}
+
+void Semantico::logInfo(const std::string &message, const Token *token)
+{
+    std::string formatted = "[INFO] " + message;
+    if (token != nullptr) {
+        formatted += " (pos " + std::to_string(token->getPosition()) + ")";
+    }
+    messages.push_back(formatted);
+}
+
+void Semantico::logWarning(const std::string &message, const Token *token)
+{
+    std::string formatted = "[AVISO] " + message;
+    if (token != nullptr) {
+        formatted += " (pos " + std::to_string(token->getPosition()) + ")";
+    }
+    messages.push_back(formatted);
 }
 
 void Semantico::executeAction(int action, const Token *token)
@@ -76,6 +131,14 @@ void Semantico::executeAction(int action, const Token *token)
     {
     case 1:
         ids.push(token->getLexeme());
+        break;
+
+    case 18:
+        pendingIdsCount++;
+        break;
+
+    case 19:
+        pendingInitCount++;
         break;
 
     case 2:
@@ -92,10 +155,18 @@ void Semantico::executeAction(int action, const Token *token)
     
     case 5:
         variableTypes.push(VariableTypes::ARRAY);
+        if (!hasPendingArraySize) {
+            throw SemanticError("Tamanho do vetor ausente!", token->getPosition());
+        }
+        arrSizes.push(pendingArraySize);
+        pendingArraySize = 1;
+        hasPendingArraySize = false;
         break;
 
+        
     case 6:
         variableTypes.push(VariableTypes::PARAMETER);
+        currFuncParamatersCounter++;
         break;
 
     case 7:
@@ -104,11 +175,19 @@ void Semantico::executeAction(int action, const Token *token)
 
     case 8:
         variableTypes.push(VariableTypes::FUNCTION);
+        if (!ids.empty()) {
+            currentFunctionName = ids.top();
+        }
         break;
 
     case 9:
         if (currentScope == nullptr){
             currentScope = stManager.getRootScope();
+        }
+        if (skipNextBlockScope) {
+            skipNextBlockScope = false;
+            skipNextBlockExit = true;
+            break;
         }
         currentScope = stManager.enterScope(currentScope);
         break;
@@ -117,6 +196,10 @@ void Semantico::executeAction(int action, const Token *token)
         if (currentScope == nullptr){
             currentScope = stManager.getRootScope();
         }
+        if (skipNextBlockExit) {
+            skipNextBlockExit = false;
+            break;
+        }
         currentScope = stManager.exitScope(currentScope);
         break;
 
@@ -124,50 +207,368 @@ void Semantico::executeAction(int action, const Token *token)
         isAttribution = true;
         break;
 
-    case 12:
-        isUsed = true;
+    case 12:{
+        std::string id = ids.top();
+        ids.pop();
+
+        if(!stManager.validateVariableScope(id, currentScope)){
+            std::string formattedError = "Variável " + id + " está fora do escopo!"; 
+            throw SemanticError(formattedError, token->getPosition());
+        }
+
+        if(!stManager.useSymbol(id, currentScope)){
+            throw SemanticError("Variável não pode ser utilizada!", token->getPosition());
+        }
+
+        MetaData mt = stManager.returnMetaData(id, currentScope);
+        if(!mt.isInitialized){
+            logWarning("Variável não foi inicializada.", token);
+        }
+
+        if(!mt.value.empty()){
+            literals.push({mt.dataType, mt.value});
+        }
+
         break;
+    }
 
     case 13:
-        isInitialized = true;
+    isInitialized = true;
         break;
 
     case 14:{
+        if (!variableTypes.empty() && variableTypes.top() == VariableTypes::PARAMETER) {
+            for (int i = 0; i < currFuncParamatersCounter; i++) {
+                if (variableTypes.empty() || variableTypes.top() != VariableTypes::PARAMETER) {
+                    throw SemanticError("Parametro invalido.", token->getPosition());
+                }
+                variableTypes.pop();
+
+                if (variableTypes.empty()) {
+                    throw SemanticError("Parametro invalido.", token->getPosition());
+                }
+                VariableTypes paramKind = variableTypes.top();
+                variableTypes.pop();
+
+                if (dataTypes.empty()) {
+                    throw SemanticError("Parametro invalido.", token->getPosition());
+                }
+
+                MetaData pmt;
+                pmt.varType = VariableTypes::PARAMETER;
+                pmt.dataType = dataTypes.top();
+                dataTypes.pop();
+                pmt.ownerFunction = currentFunctionName;
+                pmt.sequence = i+1;
+
+                if (paramKind == VariableTypes::ARRAY) {
+                    if (arrSizes.empty()) {
+                        throw SemanticError("Tamanho do vetor ausente!", token->getPosition());
+                    }
+                    pmt.arrSize = arrSizes.top();
+                    arrSizes.pop();
+                }
+
+                if (isInitialized && !literals.empty()) {
+                    pmt.isInitialized = true;
+                    if (paramKind == VariableTypes::ARRAY) {
+                        int arrSize = pmt.arrSize;
+                        if (static_cast<int>(literals.size()) < arrSize) {
+                            throw SemanticError("Inicializacao do vetor incompleta!", token->getPosition());
+                        }
+
+                        for (int j = 0; j < arrSize; j++) {
+                            std::pair<DataTypes, std::string> currLiteral = literals.top();
+                            literals.pop();
+                            if (currLiteral.first == pmt.dataType) {
+                                pmt.value += currLiteral.second + (arrSize - 1 != j ? ";" : "");
+                            }
+                        }
+                    } else {
+                        if (literals.size() == 1) {
+                            std::pair<DataTypes, std::string> currLiteral = literals.top();
+                            literals.pop();
+                            if (currLiteral.first == pmt.dataType) {
+                                pmt.value = currLiteral.second;
+                            }
+                        } else {
+                            while (!literals.empty()) {
+                                literals.pop();
+                            }
+                        }
+                    }
+                }
+
+                if (ids.empty()) {
+                    throw SemanticError("Parametro invalido.", token->getPosition());
+                }
+                std::string paramId = ids.top();
+                ids.pop();
+
+                if (!stManager.insertSymbol(paramId, pmt, currentScope)) {
+                    throw SemanticError("Parametro ja declarado no escopo!", token->getPosition());
+                }
+            }
+
+            currFuncParamatersCounter = 0;
+            isInitialized = false;
+        }
+
         MetaData mt;
         mt.varType = variableTypes.top(); 
         variableTypes.pop();
-        mt.dataType = dataTypes.top(); 
+        mt.dataType = dataTypes.top();
         dataTypes.pop();
 
-        if(isInitialized){
+        if (mt.varType == VariableTypes::ARRAY) {
+            if (arrSizes.empty()) {
+                throw SemanticError("Tamanho do vetor ausente!", token->getPosition());
+            }
+            mt.arrSize = arrSizes.top();
+            arrSizes.pop();
+        }
+
+        if (mt.varType == VariableTypes::FUNCTION) {
+            mt.isInitialized = isInitialized;
+        }
+
+        if (mt.varType != VariableTypes::FUNCTION) {
+            int idCount = pendingIdsCount > 0 ? pendingIdsCount : 1;
+            int initCount = isInitialized ? pendingInitCount : 0;
+
+            std::vector<std::string> idsOrdered;
+            idsOrdered.reserve(static_cast<std::size_t>(idCount));
+            for (int i = 0; i < idCount; i++) {
+                if (ids.empty()) {
+                    throw SemanticError("Declaracao invalida.", token->getPosition());
+                }
+                idsOrdered.push_back(ids.top());
+                ids.pop();
+            }
+            std::reverse(idsOrdered.begin(), idsOrdered.end());
+
+            if (mt.varType == VariableTypes::ARRAY) {
+                std::vector<std::string> initGroups;
+                int groups = std::min(initCount, idCount);
+                initGroups.reserve(static_cast<std::size_t>(groups));
+                for (int i = 0; i < groups; i++) {
+                    if (static_cast<int>(literals.size()) < mt.arrSize) {
+                        throw SemanticError("Inicializacao do vetor incompleta!", token->getPosition());
+                    }
+
+                    std::vector<std::string> groupValues;
+                    groupValues.reserve(static_cast<std::size_t>(mt.arrSize));
+                    for (int j = 0; j < mt.arrSize; j++) {
+                        std::pair<DataTypes, std::string> currLiteral = literals.top();
+                        literals.pop();
+                        if (currLiteral.first == mt.dataType) {
+                            groupValues.push_back(currLiteral.second);
+                        }
+                    }
+                    std::reverse(groupValues.begin(), groupValues.end());
+
+                    std::string groupValue;
+                    for (std::size_t j = 0; j < groupValues.size(); j++) {
+                        groupValue += groupValues[j];
+                        if (j + 1 < groupValues.size()) {
+                            groupValue += ";";
+                        }
+                    }
+                    initGroups.push_back(groupValue);
+                }
+                std::reverse(initGroups.begin(), initGroups.end());
+
+                for (int i = 0; i < idCount; i++) {
+                    MetaData vmt = mt;
+                    if (isInitialized && i < initCount) {
+                        vmt.isInitialized = true;
+                        if (static_cast<std::size_t>(i) < initGroups.size()) {
+                            vmt.value = initGroups[static_cast<std::size_t>(i)];
+                        }
+                    }
+
+                    if(!stManager.insertSymbol(idsOrdered[static_cast<std::size_t>(i)], vmt, currentScope)) {
+                        throw SemanticError("Variável já declarada no escopo!", token->getPosition());
+                    }
+                }
+            } else {
+                std::vector<std::pair<DataTypes, std::string>> initValues;
+                int values = std::min(initCount, idCount);
+                initValues.reserve(static_cast<std::size_t>(values));
+                for (int i = 0; i < values && !literals.empty(); i++) {
+                    initValues.push_back(literals.top());
+                    literals.pop();
+                }
+                std::reverse(initValues.begin(), initValues.end());
+
+                for (int i = 0; i < idCount; i++) {
+                    MetaData vmt = mt;
+                    if(initCount > idCount){
+                        throw SemanticError("Quantidade de inicializadores maior que quantidade de IDs", token->getPosition());
+                    }
+
+                    if (isInitialized && i < initCount) {
+                        vmt.isInitialized = true;
+                        if (static_cast<std::size_t>(i) < initValues.size()) {
+                            const auto &currLiteral = initValues[static_cast<std::size_t>(i)];
+                            if (currLiteral.first == vmt.dataType) {
+                                vmt.value = currLiteral.second;
+                            }
+                        }
+                    }
+
+                    if(!stManager.insertSymbol(idsOrdered[static_cast<std::size_t>(i)], vmt, currentScope)) {
+                        throw SemanticError("Variável já declarada no escopo!", token->getPosition());
+                    }
+                }
+            }
+
+            pendingIdsCount = 0;
+            pendingInitCount = 0;
+            isInitialized = false;
+            break;
+        }
+
+        if(isInitialized && mt.varType != VariableTypes::FUNCTION){
             mt.isInitialized = true;
-            // TODO
-            // review this
-            // I believe assuming the value as a literal is wrong.
-            // But i could be true after resolving an expression for exemple.
-            std::pair<DataTypes, std::string> currLiteral = literals.top();
-            literals.pop();
-            if(currLiteral.first == mt.dataType){
-                mt.value = currLiteral.second;
+            if(mt.varType == VariableTypes::ARRAY){
+                int arrSize = mt.arrSize;
+                if (static_cast<int>(literals.size()) < arrSize) {
+                    throw SemanticError("Inicializacao do vetor incompleta!", token->getPosition());
+                }
+                
+                for(int i = 0; i < arrSize; i++){
+                    std::pair<DataTypes, std::string> currLiteral = literals.top();
+                    literals.pop();
+                    if(currLiteral.first == mt.dataType){
+                        mt.value += currLiteral.second + (arrSize-1 != i ? ";" : "");
+                    }
+                }
+
+            }else if(mt.varType == VariableTypes::SCALAR){
+                if (literals.size() == 1) {
+                    std::pair<DataTypes, std::string> currLiteral = literals.top();
+                    literals.pop();
+                    if(currLiteral.first == mt.dataType){
+                        mt.value = currLiteral.second;
+                    }
+                } else {
+                    while (!literals.empty()) {
+                        literals.pop();
+                    }
+                }
+            }else if(mt.varType == VariableTypes::PARAMETER){
+                for(int i = 0; i < currFuncParamatersCounter; i++){
+                    
+                }
             }
         }
+
+        // NOTE
+        // Após a inicialização
+        // marcar como false para resetar.
+        isInitialized = false;
 
         std::string currId = ids.top();
         ids.pop();
 
-        if(!stManager.insertSymbol(currId, mt, currentScope)) {
-            throw ("Erro ao declarar a variável!");
+        Scope *targetScope = currentScope;
+        if (mt.varType == VariableTypes::FUNCTION && currentScope != nullptr) {
+            targetScope = currentScope->previous_scope;
+        }
+
+        if(!stManager.insertSymbol(currId, mt, targetScope)) {
+            if (mt.varType == VariableTypes::FUNCTION) {
+                MetaData existing = stManager.returnMetaData(currId, targetScope);
+                if (existing.varType == VariableTypes::FUNCTION && !existing.isInitialized && mt.isInitialized) {
+                    existing.isInitialized = true;
+                    if (!stManager.updateSymbol(currId, existing, targetScope)) {
+                        throw SemanticError("Erro ao atualizar a funcao.", token->getPosition());
+                    }
+                } else {
+                    throw SemanticError("Funcao ja declarada no escopo!", token->getPosition());
+                }
+            } else {
+                throw SemanticError("Variável já declarada no escopo!", token->getPosition());
+            }
+        }
+
+        if (mt.varType == VariableTypes::FUNCTION) {
+            currentFunctionName.clear();
         }
         break;
     }
+
+    case 15: {
+        if (literals.empty()) {
+            throw SemanticError("Tamanho do vetor invalido!", token->getPosition());
+        }
+
+        std::pair<DataTypes, std::string> sizeLiteral = literals.top();
+        literals.pop();
+
+        if (sizeLiteral.first != DataTypes::INT) {
+            throw SemanticError("Tamanho do vetor deve ser inteiro!", token->getPosition());
+        }
+
+        int size = 0;
+        try {
+            size = std::stoi(sizeLiteral.second);
+        } catch (const std::exception &) {
+            throw SemanticError("Tamanho do vetor invalido!", token->getPosition());
+        }
+
+        if (size <= 0) {
+            throw SemanticError("Tamanho do vetor deve ser positivo!", token->getPosition());
+        }
+
+        pendingArraySize *= size;
+        hasPendingArraySize = true;
+        break;
+    }
+
+    // NOTE 
+    // Para ambos os casos:
+    // A Função deve estar declarada no escopo GLOBAL (0)
+    // mas seus parâmetros devem estar no devido escopo
+    // -> então exemplos como:
+    //      fn fizz->bool(a: ent, b: ent);
+    //      fn buzz->bool(a: ent, b: ent);
+    // devem estar na árvore como GLOBAL (0)
+    //                   fizz(1) <-|  |-> buzz (2)
+    case 16:
+        if (currentScope == nullptr){
+            currentScope = stManager.getRootScope();
+        }
+        currentScope = stManager.enterScope(currentScope);
+        skipNextBlockScope = true;
+        skipNextBlockExit = false;
+        break;
+
+    case 17:
+        if (currentScope == nullptr){
+            currentScope = stManager.getRootScope();
+        }
+        currentScope = stManager.exitScope(currentScope);
+        skipNextBlockScope = false;
+        skipNextBlockExit = false;
+        break;
 
     default:
         break;
     }
 }
 
-std::vector<SymbolRow> Semantico::getSymbolRows() const
-{
+std::vector<SymbolRow> Semantico::getSymbolRows() const{
     return stManager.collectSymbolsPreorder();
+}
+
+void Semantico::logDeclaredButNotUsed() {
+    std::vector<SymbolRow> symbols = stManager.collectSymbolsPreorder();
+    for(SymbolRow symbol: symbols){
+        if(symbol.isUsed) continue;
+        std::string formatted = "[AVISO] " + varTypeEnumToString(symbol.varType) + " " + symbol.symbol + " esta declarada mas nao utilizada.";
+        messages.push_back(formatted);
+    }
 }
 

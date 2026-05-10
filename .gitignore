@@ -42,3 +42,11 @@
 
 # Vscode
 .vscode/
+
+# IDE
+ide/.qmake.stash
+*/ide
+
+# Tests files
+test.cpp
+tests.cpp

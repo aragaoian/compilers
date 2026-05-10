@@ -12,3 +12,8 @@
 #12 -> utilizacão
 #13 -> inicializacão
 #14 -> declaracão
+#15 -> tamanho do vetor
+#16 -> abrir escopo de função
+#17 -> fechar escopo de função
+#18 -> contador de ids
+#19 -> contador de inicializadores

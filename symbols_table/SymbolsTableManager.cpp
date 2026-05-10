@@ -6,6 +6,7 @@
 SymbolsTableManager::SymbolsTableManager() {
     scopes = std::make_unique<Scope>();
     scopes->previous_scope = nullptr;
+    scopes->id = scopeIdCounter++;
 }
 
 SymbolsTableManager::~SymbolsTableManager(){
@@ -13,8 +14,10 @@ SymbolsTableManager::~SymbolsTableManager(){
 }
 
 void SymbolsTableManager::reset(){
+    scopeIdCounter = 0;
     scopes = std::make_unique<Scope>();
     scopes->previous_scope = nullptr;
+    scopes->id = scopeIdCounter++;
 }
 
 Scope *SymbolsTableManager::enterScope(Scope *currScope){
@@ -23,6 +26,7 @@ Scope *SymbolsTableManager::enterScope(Scope *currScope){
     }
     auto newScope = std::make_unique<Scope>();
     newScope->previous_scope = currScope;
+    newScope->id = scopeIdCounter++;
     try{
         // NOTE
         // usar o std::move por causa do unique_ptr
@@ -51,11 +55,33 @@ Scope *SymbolsTableManager::exitScope(Scope *currScope){
     }
 }
 
+bool SymbolsTableManager::validateVariableScope(std::string symbolName, Scope *currScope){
+    if(currScope == nullptr) return false;
+
+    auto it = currScope->symbols.find(symbolName);
+    if(it != currScope->symbols.end()){
+        return true;
+    }
+    
+    return validateVariableScope(symbolName, currScope->previous_scope);
+}
+
+MetaData *SymbolsTableManager::findSymbol(std::string symbolName, Scope *currScope){
+    if(currScope == nullptr) return nullptr;
+
+    auto it = currScope->symbols.find(symbolName);
+    if(it != currScope->symbols.end()){
+        return &it->second;
+    }
+
+    return findSymbol(symbolName, currScope->previous_scope);
+}
+
 Scope *SymbolsTableManager::getRootScope(){
     return scopes.get();
 }
 
-static void collectScopeSymbolsPreorder(const Scope *scope, std::vector<SymbolRow> &rows, int scopeCounter = 0)
+static void collectScopeSymbolsPreorder(const Scope *scope, std::vector<SymbolRow> &rows)
 {
     if(scope == nullptr){
         return;
@@ -68,17 +94,19 @@ static void collectScopeSymbolsPreorder(const Scope *scope, std::vector<SymbolRo
             entry.first,
             meta.varType,
             meta.dataType,
+            meta.arrSize,
+            meta.ownerFunction,
             meta.value,
             meta.isUsed,
             meta.isInitialized,
             meta.sequence,
-            scopeCounter
+            scope->id
         });
     }
 
     for(const auto &child : scope->inner_scopes)
     {
-        collectScopeSymbolsPreorder(child.get(), rows, scopeCounter + 1);
+        collectScopeSymbolsPreorder(child.get(), rows);
     }
 }
 
@@ -94,12 +122,35 @@ bool SymbolsTableManager::insertSymbol(std::string symbolName, MetaData metaData
         return false;
     }
     try{
-        scope->symbols[symbolName] = metaData;
+        auto it = scope->symbols.find(symbolName);
+        if(it != scope->symbols.end()){
+            return false;
+        }else{
+            scope->symbols[symbolName] = metaData;
+            return true;
+        }
+        
     }catch(const std::runtime_error &e){
         std::cerr << "Erro ao inserir o símbolo: " << e.what() << std::endl;
         return false;
     }
-    return true;
+}
+
+bool SymbolsTableManager::updateSymbol(std::string symbolName, const MetaData &metaData, Scope *scope){
+    if(scope == nullptr){
+        return false;
+    }
+    try{
+        auto it = scope->symbols.find(symbolName);
+        if(it == scope->symbols.end()){
+            return false;
+        }
+        it->second = metaData;
+        return true;
+    }catch(const std::runtime_error &e){
+        std::cerr << "Erro ao atualizar o simbolo: " << e.what() << std::endl;
+        return false;
+    }
 }
 
 bool SymbolsTableManager::deleteSymbol(std::string symbolName, Scope *scope){
@@ -119,14 +170,16 @@ bool SymbolsTableManager::useSymbol(std::string symbolName, Scope *scope){
     if(scope == nullptr){
         return false;
     }
+
     try{
-        auto it = scope->symbols.find(symbolName);
-        if(it == scope->symbols.end()) return false;
-        scope->symbols[symbolName].isUsed = true;
+        MetaData *meta = findSymbol(symbolName, scope);
+        if(meta == nullptr) return false;
+        meta->isUsed = true;
     }catch(const std::runtime_error &e){
         std::cerr << "Erro ao colocar o símbolo como usado: " << e.what() << std::endl;
         return false;
     }
+
     return true;
 }
 
@@ -135,12 +188,18 @@ bool SymbolsTableManager::initializeSymbol(std::string symbolName, Scope *scope)
         return false;
     }
     try{
-        auto it = scope->symbols.find(symbolName);
-        if(it == scope->symbols.end()) return false;
-        scope->symbols[symbolName].isInitialized = true;
+        MetaData *meta = findSymbol(symbolName, scope);
+        if(meta == nullptr) return false;
+        meta->isInitialized = true;
     }catch(const std::runtime_error &e){
         std::cerr << "Erro ao colocar o símbolo como inicializado: " << e.what() << std::endl;
         return false;
     }
     return true;
+}
+
+MetaData SymbolsTableManager::returnMetaData(std::string symbolName, Scope *currScope){
+    MetaData *meta = findSymbol(symbolName, currScope);
+    if(meta == nullptr) return MetaData{};
+    return *meta;
 }
