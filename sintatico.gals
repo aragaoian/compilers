@@ -362,11 +362,13 @@ NOT = ID: "pas"
 
 // ---------------------------------------------------------------------------------------------------
 // Função e Procedimento
-<subrotina> ::= FUNCTION ID #1 #8 "->" <tipo_subrotina> #16 <parametros> <bloco_opcional>; 
+<subrotina> ::= FUNCTION ID #1 #8 "->" <tipo_subrotina> #16 <parametros> #14 #17 <bloco_opcional>; 
 
-<tipo_subrotina> ::= <tipo_dado> | VOID #2;
+<tipo_subrotina> ::= <tipo_dado> 
+                    | VOID #2;
 
-<bloco_opcional> ::= <bloco> #13 #14 #17| ";" #14 #17;
+<bloco_opcional> ::= <bloco> #13 
+                    | ";";
 
 <parametros> ::= "(" <lista_parametros> ")";
 <parametro> ::= ID #1 ":" <tipo_variavel> <tipo_dado> <parametro_pos>;

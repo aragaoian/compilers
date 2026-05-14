@@ -41,8 +41,7 @@ private:
     bool isUsed = false;
     bool inInitContext = false;
 
-    bool skipNextBlockScope = false;
-    bool skipNextBlockExit = false;
+    bool skipCodeBlock = false;
 
     int pendingIdsCount = 0;
     int pendingInitCount = 0;

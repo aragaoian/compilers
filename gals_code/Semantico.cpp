@@ -4,6 +4,14 @@
 #include <algorithm>
 #include <iostream>
 
+/*
+TODO
+1. Considerar separar a declaração 
+(ter uma ação semântica para declaração de variável, outra para declaração de parâmetro, outra para função, etc)
+2. Adicionar uma ação semântica no ID de atribuição para salvar o id do LVALUE
+3. Os valores não precisam estar na tabela de símbolos (isso não é pra ser resolvido em tempo de compilacão)
+*/
+
 #define GUARDA_ID 1
 #define GUARDA_TIPO_DADO 2
 #define GUARDA_LITERAL 3
@@ -142,8 +150,7 @@ void Semantico::reset()
     inInitContext = false;
     pendingIdsCount = 0;
     pendingInitCount = 0;
-    skipNextBlockScope = false;
-    skipNextBlockExit = false;
+    skipCodeBlock = false;
     currFuncParamatersCounter = 0;
 
     pendingIds.clear();
@@ -236,11 +243,9 @@ void Semantico::executeAction(int action, const Token *token)
         if (currentScope == nullptr){
             currentScope = stManager.getRootScope();
         }
-        if (skipNextBlockScope) {
-            skipNextBlockScope = false;
-            skipNextBlockExit = true;
-            break;
-        }
+
+        if (skipCodeBlock) break;
+        
         currentScope = stManager.enterScope(currentScope);
         break;
 
@@ -248,10 +253,11 @@ void Semantico::executeAction(int action, const Token *token)
         if (currentScope == nullptr){
             currentScope = stManager.getRootScope();
         }
-        if (skipNextBlockExit) {
-            skipNextBlockExit = false;
-            break;
+
+        if (skipCodeBlock) {
+            skipCodeBlock = false;
         }
+
         currentScope = stManager.exitScope(currentScope);
         break;
 
@@ -291,21 +297,41 @@ void Semantico::executeAction(int action, const Token *token)
         break;
 
     case DECLARA:{
+
+        // SÖ PARA TESTES
+        // Scope *rootScope = stManager.getRootScope();
+        // if (rootScope != nullptr) {
+        //     std::vector<const Scope *> scopeStack;
+        //     scopeStack.push_back(rootScope);
+
+        //     while (!scopeStack.empty()) {
+        //         const Scope *scope = scopeStack.back();
+        //         scopeStack.pop_back();
+
+        //         std::cout << "Scope id: " << scope->id << " Tamanho: " << scope->symbols.size() << '\n';
+                
+
+        //         for (const auto &child : scope->inner_scopes) {
+        //             scopeStack.push_back(child.get());
+        //         }
+        //     }
+        // }
+
         if (!variableTypes.empty() && variableTypes.top() == VariableTypes::PARAMETER) {
             for (int i = 0; i < currFuncParamatersCounter; i++) {
                 if (variableTypes.empty() || variableTypes.top() != VariableTypes::PARAMETER) {
-                    throw SemanticError("Parametro invalido.", token->getPosition());
+                    throw SemanticError("Parâmetro inválido.", token->getPosition());
                 }
                 variableTypes.pop();
 
                 if (variableTypes.empty()) {
-                    throw SemanticError("Parametro invalido.", token->getPosition());
+                    throw SemanticError("Parâmetro inválido.", token->getPosition());
                 }
                 VariableTypes paramKind = variableTypes.top();
                 variableTypes.pop();
 
                 if (dataTypes.empty()) {
-                    throw SemanticError("Parametro invalido.", token->getPosition());
+                    throw SemanticError("Parâmetro inválido.", token->getPosition());
                 }
 
                 MetaData pmt;
@@ -367,13 +393,13 @@ void Semantico::executeAction(int action, const Token *token)
                 }
 
                 if (ids.empty()) {
-                    throw SemanticError("Parametro invalido.", token->getPosition());
+                    throw SemanticError("Parâmetro inválido.", token->getPosition());
                 }
                 std::string paramId = ids.top();
                 ids.pop();
 
                 if (!stManager.insertSymbol(paramId, pmt, currentScope)) {
-                    throw SemanticError("Parametro ja declarado no escopo!", token->getPosition());
+                    throw SemanticError("Parâmetro já declarado no escopo!", token->getPosition());
                 }
             }
 
@@ -584,7 +610,7 @@ void Semantico::executeAction(int action, const Token *token)
                         throw SemanticError("Erro ao atualizar a funcao.", token->getPosition());
                     }
                 } else {
-                    throw SemanticError("Funcao ja declarada no escopo!", token->getPosition());
+                    throw SemanticError("Funcao já declarada no escopo!", token->getPosition());
                 }
             } else {
                 throw SemanticError("Variável já declarada no escopo!", token->getPosition());
@@ -599,7 +625,7 @@ void Semantico::executeAction(int action, const Token *token)
 
     case TAMANHO_VETOR: {
         if (literals.empty()) {
-            throw SemanticError("Tamanho do vetor invalido!", token->getPosition());
+            throw SemanticError("Tamanho do vetor inválido!", token->getPosition());
         }
 
         std::pair<DataTypes, std::string> sizeLiteral = literals.top();
@@ -613,7 +639,7 @@ void Semantico::executeAction(int action, const Token *token)
         try {
             size = std::stoi(sizeLiteral.second);
         } catch (const std::exception &) {
-            throw SemanticError("Tamanho do vetor invalido!", token->getPosition());
+            throw SemanticError("Tamanho do vetor inválido!", token->getPosition());
         }
 
         if (size <= 0) {
@@ -639,17 +665,13 @@ void Semantico::executeAction(int action, const Token *token)
             currentScope = stManager.getRootScope();
         }
         currentScope = stManager.enterScope(currentScope);
-        skipNextBlockScope = true;
-        skipNextBlockExit = false;
+        skipCodeBlock = true;
         break;
 
     case SAI_ESCOPO_PARAMETROS:
         if (currentScope == nullptr){
             currentScope = stManager.getRootScope();
         }
-        currentScope = stManager.exitScope(currentScope);
-        skipNextBlockScope = false;
-        skipNextBlockExit = false;
         break;
 
     case CONTA_ID_PENDENTE:

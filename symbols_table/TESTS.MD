@@ -5,13 +5,14 @@
 
 1. Inserção na tabela
 ```
-let fizz: ent; // PASSOU
-let a: ent = 1; // PASSOU
-let b: tsimple = 'a'; // PASSOU
-let c: bool = faux; // PASSOU
-let d: flotter = 1.7; // PASSOU
-let e: texte = "fizzbuzz"; // PASSOU
-let v: [10]ent; // PASSOU
+// PASSOU
+let fizz: ent;
+let a: ent = 1;
+let b: tsimple = 'a';
+let c: bool = faux;
+let d: flotter = 1.7;
+let e: texte = "fizzbuzz";
+let v: [10]ent;
 ```
 
 ```
@@ -22,7 +23,7 @@ let d, e, f: bool = vrai, faux, vrai, vrai;
 ```
 
 ```
-// NÂO PASSOU
+// NÃO PASSOU
 let a: ent;
 a = 1;
 ```
@@ -197,7 +198,7 @@ let f: tsimple = 1;
 
 7. Compatibilidade de tipos em expressoes
 ```
-// NÃO 
+// NÃO TESTADO
 let a: ent = 1 + 2;
 let b: flotter = 1.5 + 2.5;
 let c: texte = "a" + "b";

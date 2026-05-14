@@ -55,14 +55,26 @@ Scope *SymbolsTableManager::exitScope(Scope *currScope){
     }
 }
 
-bool SymbolsTableManager::validateVariableScope(std::string symbolName, Scope *currScope){
-    if(currScope == nullptr) return false;
+bool SymbolsTableManager::validateVariableScope(std::string symbolName, Scope* currScope) {
+    if (currScope == nullptr)
+        return false;
+
+    std::cout << "Scope id: " << currScope->id
+              << " addr: " << currScope
+              << " size: " << currScope->symbols.size()
+              << std::endl;
+
+    for (const auto& [name, data] : currScope->symbols) {
+        std::cout << name << '\n';
+        std::cout << data.value << '\n';
+        std::cout << data.sequence << '\n';
+    }
 
     auto it = currScope->symbols.find(symbolName);
-    if(it != currScope->symbols.end()){
+
+    if (it != currScope->symbols.end())
         return true;
-    }
-    
+
     return validateVariableScope(symbolName, currScope->previous_scope);
 }
 
