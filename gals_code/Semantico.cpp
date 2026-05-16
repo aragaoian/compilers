@@ -8,8 +8,9 @@
 TODO
 1. Considerar separar a declaração 
 (ter uma ação semântica para declaração de variável, outra para declaração de parâmetro, outra para função, etc)
-2. Adicionar uma ação semântica no ID de atribuição para salvar o id do LVALUE
-3. Os valores não precisam estar na tabela de símbolos (isso não é pra ser resolvido em tempo de compilacão)
+3. Os valores não precisam estar na tabela de símbolos (isso não é pra ser resolvido em tempo de compilacão) [X]
+4. Colocar a abertura de escopo e leitura de parametros no for
+5. Criar os warning certos na atribuicao [X]
 */
 
 #define GUARDA_ID 1
@@ -19,10 +20,10 @@ TODO
 #define TIPO_VETOR 5
 #define TIPO_PARAMETRO 6
 #define TIPO_ARGUMENTO 7
-#define TIPO_FUNCAO 8
+#define TIPO_Função 8
 #define ENTRA_ESCOPO 9
 #define SAI_ESCOPO 10
-#define INICIA_ATRIBUICAO 11
+#define ATRIBUICAO 11
 #define USO_ID 12
 #define MARCA_INICIALIZACAO 13
 #define DECLARA 14
@@ -33,6 +34,9 @@ TODO
 #define CONTA_INIT_PENDENTE 19
 #define INICIA_CONTEXTO_INIT 20
 #define FINALIZA_CONTEXTO_INIT 21
+#define AVALIA_EXPRESSAO 22
+#define GUARDA_OPERADOR 23
+#define AVALIA_RETORNO 24
 
 static std::string varTypeEnumToString(VariableTypes varType){
     switch (varType)
@@ -49,6 +53,28 @@ static std::string varTypeEnumToString(VariableTypes varType){
         return "Argumento";
     default:
         return "Desconhecido";
+    }
+}
+
+static Operators operatorFromToken(TokenId tokenId){
+    switch (tokenId)
+    {
+    case t_SUM:
+        return Operators::SUM;
+    case t_SUB:
+        return Operators::SUB;
+    case t_MUL:
+        return Operators::MUL;
+    case t_DIV:
+        return Operators::DIV;
+    case t_AND:
+        return Operators::AND;
+    case t_OR:
+        return Operators::OR;
+    case t_NOT:
+        return Operators::NOT;
+    default:
+        return Operators::SUM;
     }
 }
 
@@ -232,7 +258,7 @@ void Semantico::executeAction(int action, const Token *token)
         variableTypes.push(VariableTypes::ARGUMENT);
         break;
 
-    case TIPO_FUNCAO:
+    case TIPO_Função:
         variableTypes.push(VariableTypes::FUNCTION);
         if (!ids.empty()) {
             currentFunctionName = ids.top();
@@ -244,8 +270,11 @@ void Semantico::executeAction(int action, const Token *token)
             currentScope = stManager.getRootScope();
         }
 
-        if (skipCodeBlock) break;
-        
+        if (skipCodeBlock) {
+            skipCodeBlock = false;
+            break;
+        }
+
         currentScope = stManager.enterScope(currentScope);
         break;
 
@@ -254,21 +283,29 @@ void Semantico::executeAction(int action, const Token *token)
             currentScope = stManager.getRootScope();
         }
 
-        if (skipCodeBlock) {
-            skipCodeBlock = false;
-        }
-
         currentScope = stManager.exitScope(currentScope);
         break;
 
-    case INICIA_ATRIBUICAO:
-        isAttribution = true;
+    case ATRIBUICAO:{
+        if (currentScope == nullptr){
+            currentScope = stManager.getRootScope();
+        }
+
+        std::string id = ids.top();
+        std::cout << id << std::endl;
+        ids.pop();
+
+        MetaData *mt = stManager.returnMetaData(id, currentScope);
+        if(mt == nullptr){
+            break;
+        }
+        mt->isInitialized = true;
         break;
+    }
 
     case USO_ID:{
         std::string id = ids.top();
         ids.pop();
-
 
         if(!stManager.validateVariableScope(id, currentScope)){
             std::string formattedError = "Variável " + id + " está fora do escopo!"; 
@@ -279,13 +316,12 @@ void Semantico::executeAction(int action, const Token *token)
             throw SemanticError("Variável não pode ser utilizada!", token->getPosition());
         }
 
-        MetaData mt = stManager.returnMetaData(id, currentScope);
-        
-        if(!mt.value.empty()){
+        MetaData *mt = stManager.returnMetaData(id, currentScope);
+        if (mt != nullptr) {
             if (inInitContext) {
-                declLiterals.push({mt.dataType, mt.value});
+                declLiterals.push({mt->dataType, ""});
             } else {
-                literals.push({mt.dataType, mt.value});
+                literals.push({mt->dataType, ""});
             }
         }
 
@@ -297,26 +333,6 @@ void Semantico::executeAction(int action, const Token *token)
         break;
 
     case DECLARA:{
-
-        // SÖ PARA TESTES
-        // Scope *rootScope = stManager.getRootScope();
-        // if (rootScope != nullptr) {
-        //     std::vector<const Scope *> scopeStack;
-        //     scopeStack.push_back(rootScope);
-
-        //     while (!scopeStack.empty()) {
-        //         const Scope *scope = scopeStack.back();
-        //         scopeStack.pop_back();
-
-        //         std::cout << "Scope id: " << scope->id << " Tamanho: " << scope->symbols.size() << '\n';
-                
-
-        //         for (const auto &child : scope->inner_scopes) {
-        //             scopeStack.push_back(child.get());
-        //         }
-        //     }
-        // }
-
         if (!variableTypes.empty() && variableTypes.top() == VariableTypes::PARAMETER) {
             for (int i = 0; i < currFuncParamatersCounter; i++) {
                 if (variableTypes.empty() || variableTypes.top() != VariableTypes::PARAMETER) {
@@ -370,7 +386,6 @@ void Semantico::executeAction(int action, const Token *token)
                             if (comp == CompatibilityResult::Warn) {
                                 logWarning("Compatibilidade de tipos com aviso.", token);
                             }
-                            pmt.value += currLiteral.second + (arrSize - 1 != j ? ";" : "");
                         }
                     } else {
                         if (declLiterals.size() == 1) {
@@ -383,7 +398,6 @@ void Semantico::executeAction(int action, const Token *token)
                             if (comp == CompatibilityResult::Warn) {
                                 logWarning("Compatibilidade de tipos com aviso.", token);
                             }
-                            pmt.value = currLiteral.second;
                         } else {
                             while (!declLiterals.empty()) {
                                 declLiterals.pop();
@@ -441,20 +455,16 @@ void Semantico::executeAction(int action, const Token *token)
             std::reverse(idsOrdered.begin(), idsOrdered.end());
 
             if (mt.varType == VariableTypes::ARRAY) {
-                std::vector<std::string> initGroups;
                 int groups = std::min(initCount, idCount);
-                initGroups.reserve(static_cast<std::size_t>(groups));
+                if (initCount > idCount) {
+                    throw SemanticError("Quantidade de inicializadores de vetor maior que quantidade de IDs", token->getPosition());
+                }
+
                 for (int i = 0; i < groups; i++) {
                     if (static_cast<int>(declLiterals.size()) < mt.arrSize) {
                         throw SemanticError("Inicialização do vetor incompleta!", token->getPosition());
                     }
 
-                    if(initCount > idCount){
-                        throw SemanticError("Quantidade de inicializadores de vetor maior que quantidade de IDs", token->getPosition());
-                    }
-
-                    std::vector<std::string> groupValues;
-                    groupValues.reserve(static_cast<std::size_t>(mt.arrSize));
                     for (int j = 0; j < mt.arrSize; j++) {
                         std::pair<DataTypes, std::string> currLiteral = declLiterals.top();
                         declLiterals.pop();
@@ -465,31 +475,16 @@ void Semantico::executeAction(int action, const Token *token)
                         if (comp == CompatibilityResult::Warn) {
                             logWarning("Compatibilidade de tipos com aviso.", token);
                         }
-                        groupValues.push_back(currLiteral.second);
                     }
-                    std::reverse(groupValues.begin(), groupValues.end());
-
-                    std::string groupValue;
-                    for (std::size_t j = 0; j < groupValues.size(); j++) {
-                        groupValue += groupValues[j];
-                        if (j + 1 < groupValues.size()) {
-                            groupValue += ";";
-                        }
-                    }
-                    initGroups.push_back(groupValue);
                 }
                 if (!declLiterals.empty()) {
                     throw SemanticError("Inicialização do vetor excede o tamanho!", token->getPosition());
                 }
-                std::reverse(initGroups.begin(), initGroups.end());
 
                 for (int i = 0; i < idCount; i++) {
                     MetaData vmt = mt;
                     if (isInitialized && i < initCount) {
                         vmt.isInitialized = true;
-                        if (static_cast<std::size_t>(i) < initGroups.size()) {
-                            vmt.value = initGroups[static_cast<std::size_t>(i)];
-                        }
                     }
 
                     if(!stManager.insertSymbol(idsOrdered[static_cast<std::size_t>(i)], vmt, currentScope)) {
@@ -497,33 +492,24 @@ void Semantico::executeAction(int action, const Token *token)
                     }
                 }
             } else {
-                std::vector<std::pair<DataTypes, std::string>> initValues;
-                int values = std::min(initCount, idCount);
-                initValues.reserve(static_cast<std::size_t>(values));
-                for (int i = 0; i < values && !declLiterals.empty(); i++) {
-                    initValues.push_back(declLiterals.top());
-                    declLiterals.pop();
+                if (initCount > idCount) {
+                    throw SemanticError("Quantidade de inicializadores maior que quantidade de IDs", token->getPosition());
                 }
-                std::reverse(initValues.begin(), initValues.end());
 
                 for (int i = 0; i < idCount; i++) {
                     MetaData vmt = mt;
-                    if(initCount > idCount){
-                        throw SemanticError("Quantidade de inicializadores maior que quantidade de IDs", token->getPosition());
-                    }
-
                     if (isInitialized && i < initCount) {
                         vmt.isInitialized = true;
-                        if (static_cast<std::size_t>(i) < initValues.size()) {
-                            const auto &currLiteral = initValues[static_cast<std::size_t>(i)];
+                        if (!declLiterals.empty()) {
+                            const auto &currLiteral = declLiterals.top();
                             CompatibilityResult comp = checkAssignmentCompatibility(vmt.dataType, currLiteral.first);
+                            declLiterals.pop();
                             if (comp == CompatibilityResult::Error) {
                                 throw SemanticError("O tipo não é compatível.", token->getPosition());
                             }
                             if (comp == CompatibilityResult::Warn) {
                                 logWarning("Compatibilidade de tipos com aviso.", token);
                             }
-                            vmt.value = currLiteral.second;
                         }
                     }
 
@@ -561,7 +547,6 @@ void Semantico::executeAction(int action, const Token *token)
                     if (comp == CompatibilityResult::Warn) {
                         logWarning("Compatibilidade de tipos com aviso.", token);
                     }
-                    mt.value += currLiteral.second + (arrSize-1 != i ? ";" : "");
                 }
 
             }else if(mt.varType == VariableTypes::SCALAR){
@@ -575,7 +560,6 @@ void Semantico::executeAction(int action, const Token *token)
                     if (comp == CompatibilityResult::Warn) {
                         logWarning("Compatibilidade de tipos com aviso.", token);
                     }
-                    mt.value = currLiteral.second;
                 } else {
                     while (!literals.empty()) {
                         literals.pop();
@@ -603,19 +587,21 @@ void Semantico::executeAction(int action, const Token *token)
 
         if(!stManager.insertSymbol(currId, mt, targetScope)) {
             if (mt.varType == VariableTypes::FUNCTION) {
-                MetaData existing = stManager.returnMetaData(currId, targetScope);
-                if (existing.varType == VariableTypes::FUNCTION && !existing.isInitialized && mt.isInitialized) {
-                    existing.isInitialized = true;
-                    if (!stManager.updateSymbol(currId, existing, targetScope)) {
-                        throw SemanticError("Erro ao atualizar a funcao.", token->getPosition());
+                MetaData *existing = stManager.returnMetaData(currId, targetScope);
+                if (existing->varType == VariableTypes::FUNCTION && !existing->isInitialized && mt.isInitialized) {
+                    existing->isInitialized = true;
+                    if (!stManager.updateSymbol(currId, *existing, targetScope)) {
+                        throw SemanticError("Erro ao atualizar a Função.", token->getPosition());
                     }
                 } else {
-                    throw SemanticError("Funcao já declarada no escopo!", token->getPosition());
+                    throw SemanticError("Função já declarada no escopo!", token->getPosition());
                 }
             } else {
                 throw SemanticError("Variável já declarada no escopo!", token->getPosition());
             }
         }
+
+        currentReturnType = mt.dataType;
 
         if (mt.varType == VariableTypes::FUNCTION) {
             currentFunctionName.clear();
@@ -689,6 +675,181 @@ void Semantico::executeAction(int action, const Token *token)
     case FINALIZA_CONTEXTO_INIT:
         inInitContext = false;
         break;
+
+    case AVALIA_EXPRESSAO:{
+        auto right = literals.top();
+        literals.pop();
+
+        auto left = literals.top();
+        literals.pop();
+
+        Operators op = operators.top();
+        operators.pop();
+
+        auto leftType = left.first;
+        auto rightType = right.first;
+
+        switch(op){
+
+            case Operators::SUM:{
+
+                // string + anything
+                if(leftType == DataTypes::STRING ||
+                rightType == DataTypes::STRING){
+
+                    literals.push({DataTypes::STRING, ""});
+                    break;
+                }
+
+                // char + string
+                if(leftType == DataTypes::CHAR &&
+                rightType == DataTypes::STRING){
+
+                    literals.push({DataTypes::STRING, ""});
+                    break;
+                }
+
+                // int + int
+                if(leftType == DataTypes::INT &&
+                rightType == DataTypes::INT){
+
+                    literals.push({DataTypes::INT, ""});
+                    break;
+                }
+
+                // float combinations
+                if((leftType == DataTypes::FLOAT &&
+                    rightType == DataTypes::FLOAT) ||
+
+                (leftType == DataTypes::FLOAT &&
+                    rightType == DataTypes::INT) ||
+
+                (leftType == DataTypes::INT &&
+                    rightType == DataTypes::FLOAT)){
+
+                    if(leftType == DataTypes::INT &&
+                    rightType == DataTypes::FLOAT){
+                        logWarning("Perda de precisão.", token);
+                    }
+
+                    literals.push({DataTypes::FLOAT, ""});
+                    break;
+                }
+
+                // char + char
+                if(leftType == DataTypes::CHAR &&
+                rightType == DataTypes::CHAR){
+                    literals.push({DataTypes::CHAR, ""});
+                    break;
+                }
+
+                // char + int
+                if(leftType == DataTypes::CHAR &&
+                rightType == DataTypes::INT){
+                    logWarning("Considerando apenas o primeiro dígito", token);
+                    literals.push({DataTypes::CHAR, ""});
+                    break;
+                }
+
+                throw SemanticError("Tipos incompatíveis para SUM");
+            }
+
+            case Operators::SUB:
+            case Operators::MUL:
+            case Operators::DIV:{
+
+                // string invalid
+                if(leftType == DataTypes::STRING ||
+                rightType == DataTypes::STRING){
+
+                    throw SemanticError("Tipo STRING inválido nessa operação");
+                }
+
+                // char invalid with float
+                if((leftType == DataTypes::CHAR &&
+                    rightType == DataTypes::FLOAT) ||
+
+                (leftType == DataTypes::FLOAT &&
+                    rightType == DataTypes::CHAR)){
+
+                    throw SemanticError("CHAR incompatível com FLOAT");
+                }
+
+                // char invalid with int for these ops
+                if((leftType == DataTypes::CHAR &&
+                    rightType == DataTypes::INT) ||
+
+                (leftType == DataTypes::INT &&
+                    rightType == DataTypes::CHAR)){
+
+                    throw SemanticError("CHAR incompatível com INT");
+                }
+
+                // char char
+                if(leftType == DataTypes::CHAR &&
+                rightType == DataTypes::CHAR){
+                    literals.push({DataTypes::CHAR, ""});
+                    break;
+                }
+
+                // int int
+                if(leftType == DataTypes::INT &&
+                rightType == DataTypes::INT){
+                    literals.push({DataTypes::INT, ""});
+                    break;
+                }
+
+                // float combinations
+                if((leftType == DataTypes::FLOAT &&
+                    rightType == DataTypes::FLOAT) ||
+                (leftType == DataTypes::FLOAT &&
+                    rightType == DataTypes::INT) ||
+                (leftType == DataTypes::INT &&
+                    rightType == DataTypes::FLOAT)){
+                    literals.push({DataTypes::FLOAT, ""});
+                    break;
+                }
+
+                throw SemanticError("Tipos incompatíveis");
+            }
+
+            case Operators::AND:
+            case Operators::OR:{
+
+                if(leftType != DataTypes::BOOLEAN ||
+                rightType != DataTypes::BOOLEAN){
+
+                    throw SemanticError("AND/OR requer BOOLEAN");
+                }
+
+                literals.push({DataTypes::BOOLEAN, ""});
+                break;
+            }
+
+            case Operators::NOT:{
+
+                if(rightType != DataTypes::BOOLEAN){
+                    throw SemanticError("NOT requer BOOLEAN");
+                }
+
+                literals.push({DataTypes::BOOLEAN, ""});
+                break;
+            }
+        }
+
+        break;
+    }
+
+    case GUARDA_OPERADOR:
+        operators.push(operatorFromToken(token->getId()));
+        break;
+
+    case AVALIA_RETORNO:{
+        auto returnType = literals.top();
+        literals.pop();
+        auto 
+        break;
+    }
 
     default:
         break;

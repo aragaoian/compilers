@@ -14,10 +14,13 @@ struct MetaData {
     DataTypes dataType;
     int arrSize = 0;
     std::string ownerFunction;
-    std::string value;
     bool isUsed = false;
     bool isInitialized = false;
     int sequence = 0;
+
+    bool operator==(const MetaData& other) const {
+        return isInitialized == other.isInitialized;
+    }
 };
 
 struct SymbolRow {
@@ -26,7 +29,6 @@ struct SymbolRow {
     DataTypes dataType;
     int arrSize = 0;
     std::string ownerFunction;
-    std::string value;
     bool isUsed = false;
     bool isInitialized = false;
     int sequence = 0;
@@ -62,7 +64,7 @@ public:
     bool deleteSymbol(std::string symbolName, Scope *scope);
     bool useSymbol(std::string symbolName, Scope *scope);
     bool initializeSymbol(std::string symbolName, Scope *scope);
-    MetaData returnMetaData(std::string symbolName, Scope *currScope);
+    MetaData *returnMetaData(std::string symbolName, Scope *currScope);
 
 };
 

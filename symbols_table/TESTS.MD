@@ -69,6 +69,15 @@ fn fizz->bool(a: ent, b: ent);
 fn buzz->bool(a: ent, b: ent);
 ```
 
+```
+// PASSOU
+fn test->bool(a: ent) #ABRIR SCOPO {
+    si(a: ent){
+        let c: ent = 1;
+    }
+}
+```
+
 2. Validação de escopo
 ```
 // PASSOU

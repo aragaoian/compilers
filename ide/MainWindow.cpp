@@ -105,14 +105,13 @@ void MainWindow::setupLayout()
     output->setReadOnly(true);
     output->setPlaceholderText("Mensagens de compilação...");
 
-    symbolsTable->setColumnCount(10);
+    symbolsTable->setColumnCount(9);
     symbolsTable->setHorizontalHeaderLabels({
         "Symbol",
         "Type",
         "Function",
         "Data Type",
         "Array Size",
-        "Value",
         "Used",
         "Initialized",
         "Sequence",
@@ -216,22 +215,14 @@ void MainWindow::updateSymbolsTable(const std::vector<SymbolRow> &symbols)
         const QString arrSizeText = symbol.arrSize > 0 ? QString::number(symbol.arrSize) : "";
         const QString ownerText = symbol.ownerFunction.empty() ? "" : QString::fromStdString(symbol.ownerFunction);
 
-        QString valueText;
-        if(symbol.value.empty() && symbol.varType == VariableTypes::FUNCTION){
-            valueText = "";
-        }else{
-            valueText = symbol.value.empty() ? "mem garbage" : QString::fromStdString(symbol.value);
-        }
-
         symbolsTable->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(symbol.symbol)));
         symbolsTable->setItem(row, 1, new QTableWidgetItem(variableTypeToString(symbol.varType)));
         symbolsTable->setItem(row, 2, new QTableWidgetItem(ownerText));
         symbolsTable->setItem(row, 3, new QTableWidgetItem(dataTypeToString(symbol.dataType)));
         symbolsTable->setItem(row, 4, new QTableWidgetItem(arrSizeText));
-        symbolsTable->setItem(row, 5, new QTableWidgetItem(valueText));
-        symbolsTable->setItem(row, 6, new QTableWidgetItem(symbol.isUsed ? "true" : "false"));
-        symbolsTable->setItem(row, 7, new QTableWidgetItem(symbol.isInitialized ? "true" : "false"));
-        symbolsTable->setItem(row, 8, new QTableWidgetItem(QString::number(symbol.sequence)));
-        symbolsTable->setItem(row, 9, new QTableWidgetItem(symbol.scope == 0 ? "global" : QString::number(symbol.scope)));
+        symbolsTable->setItem(row, 5, new QTableWidgetItem(symbol.isUsed ? "true" : "false"));
+        symbolsTable->setItem(row, 6, new QTableWidgetItem(symbol.isInitialized ? "true" : "false"));
+        symbolsTable->setItem(row, 7, new QTableWidgetItem(QString::number(symbol.sequence)));
+        symbolsTable->setItem(row, 8, new QTableWidgetItem(symbol.scope == 0 ? "global" : QString::number(symbol.scope)));
     }
 }

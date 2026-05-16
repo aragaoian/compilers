@@ -120,6 +120,10 @@ NOT = ID: "pas"
 <prefixo>
 <posfixo>
 <comando>
+<comando_id>
+<pre_fixo>
+<resto_comando_id>
+<decisao_atribuicao_ou_posfixo>
 <declaracao>
 <identificadores>
 <lista_ids>
@@ -132,25 +136,27 @@ NOT = ID: "pas"
 <lista_init_vetor>
 <multiplos_init_vetor>
 <exp>
+<exp_linha>
 <exp1>
+<exp1_linha>
 <exp2>
 <exp3>
 <exp4>
 <exp5>
 <exp6>
 <exp7>
+<exp7_linha>
 <exp8>
+<exp8_linha>
 <exp9>
 <exp10>
+<resto_id_exp>
 <op_rel>
 <op_negativa>
 <op_bitwise>
-<op_aritmetica_baixa>
-<op_aritmetica_alta>
 <log>
 <sqrt>
 <exponential>
-<resto_id>
 <atribuicao>
 <lvalue>
 <rvalue>
@@ -178,7 +184,6 @@ NOT = ID: "pas"
 <subrotina>
 <tipo_subrotina>
 <bloco_opcional>
-<tipo_subrotina_pos>
 <parametros>
 <parametro>
 <parametro_pos>
@@ -214,24 +219,31 @@ NOT = ID: "pas"
 
 <inc_dec> ::= INCREMENT | DECREMENT;
 
-// TODO
-// Verificar como posso colocar isso dentro da <exp>
-<prefixo> ::= <inc_dec> ID #1 #12 <tipo_variavel>;
-<posfixo> ::= ID #1 #12 <tipo_variavel> <inc_dec>;
+// Ajustados para disparar #12 apenas no fim
+<prefixo> ::= <inc_dec> ID #1 <tipo_variavel> #12;
+<posfixo> ::= ID #1 <tipo_variavel> <inc_dec> #12;
 
 // ---------------------------------------------------------------------------------------------------
 // Comandos
 <comando> ::= <declaracao> ";"
-            | <atribuicao> ";"
+            | <comando_id> ";"
             | <entrada> ";"
             | <saida> ";"
             | <loops>
             | <condicional>
-            | <prefixo> ";"
-            | <posfixo> ";"
             | <subrotina>
-            | <chamada> ";"
             | <tipo_retorno> ";";
+
+<comando_id> ::= <pre_fixo> ID #1 <resto_comando_id>;
+
+<pre_fixo> ::= <inc_dec> | î;
+
+<resto_comando_id> ::= <tipo_variavel> <decisao_atribuicao_ou_posfixo>
+                     | "(" <argumentos> ")" #12;
+
+<decisao_atribuicao_ou_posfixo> ::= <tipo_atribuicao> <rvalue> #11
+                                 | <inc_dec> #12
+                                 | #12;
 
 // ---------------------------------------------------------------------------------------------------
 // Declaração
@@ -256,17 +268,34 @@ NOT = ID: "pas"
 // ---------------------------------------------------------------------------------------------------
 // Expressões
 
-<exp> ::= <exp> OR <exp1> | <exp1>;
-<exp1> ::= <exp1> AND <exp2> | <exp2>;
+<exp> ::= <exp1> <exp_linha>;
+<exp_linha> ::= OR #23 <exp1> <exp_linha> #22
+                | î;
+
+<exp1> ::= <exp2> <exp1_linha>;
+<exp1_linha> ::= AND #23 <exp2> <exp1_linha> #22
+                | î;
+
 <exp2> ::= <exp2> BITWISE_OR <exp3> | <exp3>;
 <exp3> ::= <exp3> BITWISE_XOR <exp4> | <exp4>;
 <exp4> ::= <exp4> BITWISE_AND <exp5> | <exp5>;
 <exp5> ::= <exp5> <op_rel> <exp6> | <exp6>;
 <exp6> ::= <exp6> <op_bitwise> <exp7> | <exp7>;
-<exp7> ::= <exp7> <op_aritmetica_baixa> <exp8> | <exp8>;
-<exp8> ::= <exp8> <op_aritmetica_alta> <exp9> | <exp9>;
-<exp9> ::= <op_negativa> <exp10> | <exp10>;
-<exp10> ::= ID #1 #12 <resto_id>
+
+<exp7> ::= <exp8> <exp7_linha>;
+<exp7_linha> ::= SUM #23 <exp8> #22 <exp7_linha>
+               | SUB #23 <exp8> #22 <exp7_linha>
+               | î;
+               
+<exp8> ::= <exp9> <exp8_linha>;
+<exp8_linha> ::= MUL #23 <exp9> #22 <exp8_linha>
+               | DIV #23 <exp9> #22 <exp8_linha>
+               | MOD <exp9> <exp8_linha>
+               | î;
+
+<exp9> ::= <op_negativa> <exp10> #22| <exp10>;
+
+<exp10> ::= ID #1 <resto_id_exp>
           | INT_VALUE_DECIMAL #3
           | INT_VALUE_BINARY #3
           | INT_VALUE_HEXADECIMAL #3
@@ -280,25 +309,23 @@ NOT = ID: "pas"
           | <exponential> 
           | "(" <exp> ")";
 
+<resto_id_exp> ::= <tipo_variavel> #12 
+                | "(" <argumentos> ")" #12;
+
 <op_rel> ::= GREATER_EQ | LESSER_EQ | EQUAL_CONDITION | DIFFERENT_CONDITION | GREATER | LESSER; 
 <op_negativa> ::= SUB | BITWISE_NOT | NOT;
 <op_bitwise> ::= LEFT_SHIFT | RIGHT_SHIFT;
-<op_aritmetica_baixa> ::= SUM | SUB;
-<op_aritmetica_alta> ::= MUL | DIV | MOD;
 
 <log> ::= LOG "(" <exp> ")";
 <sqrt> ::= SQRT "(" <exp> "," <exp> ")";
 <exponential> ::= EXP "(" <exp> "," <exp> ")";
-
-<resto_id> ::= <tipo_variavel>
-            | "(" <argumentos> ")";
 
 // ---------------------------------------------------------------------------------------------------
 // Atribuição
 
 <atribuicao> ::= <lvalue> <tipo_atribuicao> <rvalue> #11;
 
-<lvalue> ::= ID #1 #12 <tipo_variavel>;
+<lvalue> ::= ID #1 <tipo_variavel>;
 
 <rvalue> ::= <exp>
           | <prefixo>
@@ -309,8 +336,7 @@ NOT = ID: "pas"
                     | EQUAL_SUB;
 
 // ---------------------------------------------------------------------------------------------------
-// IO
-
+// IO 
 <entrada> ::= CIN <resto_entrada>;
 <resto_entrada> ::= RIGHT_SHIFT <variavel_entrada> <resto_entrada> | î;
 <variavel_entrada> ::= ID #1 <tipo_variavel>;
@@ -383,13 +409,13 @@ NOT = ID: "pas"
 // ---------------------------------------------------------------------------------------------------
 // Tipo do Retorno
 
-<tipo_retorno> ::= RETURN <resto_retorno>;
+<tipo_retorno> ::= RETURN <resto_retorno> #24;
 <resto_retorno> ::= <exp> | î;
 
 // ---------------------------------------------------------------------------------------------------
 // Chamada de Funcão
 
-<chamada> ::= ID #1 #12 "(" <argumentos> ")";
+<chamada> ::= ID #1 "(" <argumentos> ")" #12;
 
 <argumentos> ::= <exp> #7 <lista_argumentos> | î;
 <lista_argumentos> ::= "," <exp> #7 <lista_argumentos> | î;

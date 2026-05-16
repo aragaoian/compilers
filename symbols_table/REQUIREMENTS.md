@@ -8,7 +8,7 @@
 5. Inserção múltipla de escalar [X]
 6. Inserção múltipla de vetor [X]
 7. Identificar expressões [X]
-8. Atribuição [] -> não funciona ainda
+8. Atribuição [X]
 
 ### (2 pontos) Verificar se os identificadores estão declarados no escopo em que são usados no programa, sem vazar para escopos proibidos
 1. Fazer função de validação de escopo [X]
@@ -26,11 +26,7 @@
 1. Criação da tabela semântica pelo qt [X]
 
 ### (2 pontos) Verificar a compatibilidade de tipos nas expressões (por exemplo, evitar multiplicação de strings) e nas atribuições.
-
-> [!WARNING]
-> 1. A validação da compatiblidade do retorno ainda não funciona
-> 2. A atribuição não funciona (precisa criar uma nova ação semantica para o ID da atribuição)
-> 3. Os parâmetros da função não funcionam dentro do escopo da função
+1. Criar avaliações de compatiblidade [X]
 
 #### Tabela de compatibilidade - Operações
 

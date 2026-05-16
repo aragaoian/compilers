@@ -59,19 +59,7 @@ bool SymbolsTableManager::validateVariableScope(std::string symbolName, Scope* c
     if (currScope == nullptr)
         return false;
 
-    std::cout << "Scope id: " << currScope->id
-              << " addr: " << currScope
-              << " size: " << currScope->symbols.size()
-              << std::endl;
-
-    for (const auto& [name, data] : currScope->symbols) {
-        std::cout << name << '\n';
-        std::cout << data.value << '\n';
-        std::cout << data.sequence << '\n';
-    }
-
     auto it = currScope->symbols.find(symbolName);
-
     if (it != currScope->symbols.end())
         return true;
 
@@ -108,7 +96,6 @@ static void collectScopeSymbolsPreorder(const Scope *scope, std::vector<SymbolRo
             meta.dataType,
             meta.arrSize,
             meta.ownerFunction,
-            meta.value,
             meta.isUsed,
             meta.isInitialized,
             meta.sequence,
@@ -210,8 +197,8 @@ bool SymbolsTableManager::initializeSymbol(std::string symbolName, Scope *scope)
     return true;
 }
 
-MetaData SymbolsTableManager::returnMetaData(std::string symbolName, Scope *currScope){
+MetaData *SymbolsTableManager::returnMetaData(std::string symbolName, Scope *currScope){
     MetaData *meta = findSymbol(symbolName, currScope);
-    if(meta == nullptr) return MetaData{};
-    return *meta;
+    if(meta == nullptr) return nullptr;
+    return meta;
 }

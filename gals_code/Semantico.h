@@ -9,6 +9,16 @@
 #include <utility>
 #include <vector>
 
+enum class Operators{
+    SUM,
+    SUB,
+    MUL,
+    DIV,
+    OR,
+    AND,
+    NOT
+};
+
 class Semantico
 {
 public:
@@ -51,6 +61,8 @@ private:
     std::string currentFunctionName;
     DataTypes currentReturnType = DataTypes::VOID;
     std::vector<std::pair<DataTypes, std::string>> pendingArgs;
+
+    std::stack<Operators> operators;
 
 };
 
