@@ -55,14 +55,14 @@ Scope *SymbolsTableManager::exitScope(Scope *currScope){
     }
 }
 
-bool SymbolsTableManager::validateVariableScope(std::string symbolName, Scope *currScope){
-    if(currScope == nullptr) return false;
+bool SymbolsTableManager::validateVariableScope(std::string symbolName, Scope* currScope) {
+    if (currScope == nullptr)
+        return false;
 
     auto it = currScope->symbols.find(symbolName);
-    if(it != currScope->symbols.end()){
+    if (it != currScope->symbols.end())
         return true;
-    }
-    
+
     return validateVariableScope(symbolName, currScope->previous_scope);
 }
 
@@ -96,7 +96,6 @@ static void collectScopeSymbolsPreorder(const Scope *scope, std::vector<SymbolRo
             meta.dataType,
             meta.arrSize,
             meta.ownerFunction,
-            meta.value,
             meta.isUsed,
             meta.isInitialized,
             meta.sequence,
@@ -198,8 +197,8 @@ bool SymbolsTableManager::initializeSymbol(std::string symbolName, Scope *scope)
     return true;
 }
 
-MetaData SymbolsTableManager::returnMetaData(std::string symbolName, Scope *currScope){
+MetaData *SymbolsTableManager::returnMetaData(std::string symbolName, Scope *currScope){
     MetaData *meta = findSymbol(symbolName, currScope);
-    if(meta == nullptr) return MetaData{};
-    return *meta;
+    if(meta == nullptr) return nullptr;
+    return meta;
 }

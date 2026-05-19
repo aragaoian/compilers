@@ -21,5 +21,6 @@
 | #19 | contador de inicializadores |
 | #20 | inicio de inicialização |
 | #21 | fim de inicialização |
-| #22 | pegar operador |
-| #23 | verificação da expresão |
+| #22 | avalia expressão |
+| #23 | operador |
+| #24 | avalia retorno |

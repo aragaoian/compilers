@@ -1,22 +1,20 @@
 #include "MainWindow.h"
 
-#include <QFont>
 #include <QAbstractItemView>
+#include <QFont>
 #include <QHeaderView>
-#include <QLabel>
 #include <QKeySequence>
+#include <QLabel>
 #include <QMenuBar>
 #include <QPalette>
 #include <QSplitter>
+#include <QTableWidgetItem>
 #include <QTextCharFormat>
 #include <QTextCursor>
-#include <QTableWidgetItem>
 #include <QVBoxLayout>
 
-static QString variableTypeToString(VariableTypes type)
-{
-    switch (type)
-    {
+static QString variableTypeToString(VariableTypes type) {
+    switch (type) {
     case VariableTypes::SCALAR:
         return "Scalar";
     case VariableTypes::ARRAY:
@@ -32,10 +30,8 @@ static QString variableTypeToString(VariableTypes type)
     }
 }
 
-static QString dataTypeToString(DataTypes type)
-{
-    switch (type)
-    {
+static QString dataTypeToString(DataTypes type) {
+    switch (type) {
     case DataTypes::INT:
         return "Int";
     case DataTypes::FLOAT:
@@ -54,15 +50,10 @@ static QString dataTypeToString(DataTypes type)
 }
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent),
-      editor(new QPlainTextEdit(this)),
-      output(new QPlainTextEdit(this)),
-      symbolsTable(new QTableWidget(this)),
-      symbolsPanel(new QWidget(this)),
+    : QMainWindow(parent), editor(new QPlainTextEdit(this)), output(new QPlainTextEdit(this)),
+      symbolsTable(new QTableWidget(this)), symbolsPanel(new QWidget(this)),
       compileAction(new QAction("Compilar", this)),
-      toggleSymbolsAction(new QAction("Tabela de Símbolos", this)),
-      toolbar(new QToolBar(this))
-{
+      toggleSymbolsAction(new QAction("Tabela de Símbolos", this)), toolbar(new QToolBar(this)) {
     setWindowTitle("I(an)DE - Compilador Françês");
     resize(980, 640);
 
@@ -70,16 +61,14 @@ MainWindow::MainWindow(QWidget *parent)
     setupLayout();
 }
 
-void MainWindow::setupActions()
-{
+void MainWindow::setupActions() {
     compileAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_B));
     connect(compileAction, &QAction::triggered, this, [this]() { compileSourceCode(); });
 
     toggleSymbolsAction->setCheckable(true);
     toggleSymbolsAction->setChecked(true);
-    connect(toggleSymbolsAction, &QAction::toggled, this, [this](bool visible) {
-        symbolsPanel->setVisible(visible);
-    });
+    connect(toggleSymbolsAction, &QAction::toggled, this,
+            [this](bool visible) { symbolsPanel->setVisible(visible); });
 
     QMenu *buildMenu = menuBar()->addMenu("Compilar");
     buildMenu->addAction(compileAction);
@@ -92,8 +81,7 @@ void MainWindow::setupActions()
     addToolBar(toolbar);
 }
 
-void MainWindow::setupLayout()
-{
+void MainWindow::setupLayout() {
     QFont monoFont("Monospace");
     monoFont.setStyleHint(QFont::TypeWriter);
     monoFont.setPointSize(14);
@@ -105,19 +93,10 @@ void MainWindow::setupLayout()
     output->setReadOnly(true);
     output->setPlaceholderText("Mensagens de compilação...");
 
-    symbolsTable->setColumnCount(10);
-    symbolsTable->setHorizontalHeaderLabels({
-        "Symbol",
-        "Type",
-        "Function",
-        "Data Type",
-        "Array Size",
-        "Value",
-        "Used",
-        "Initialized",
-        "Sequence",
-        "Scope"
-    });
+    symbolsTable->setColumnCount(9);
+    symbolsTable->setHorizontalHeaderLabels({"Symbol", "Type", "Function", "Data Type",
+                                             "Array Size", "Used", "Initialized", "Sequence",
+                                             "Scope"});
     symbolsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     symbolsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     symbolsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -158,8 +137,7 @@ void MainWindow::setupLayout()
     setCentralWidget(centralWidget);
 }
 
-void MainWindow::compileSourceCode()
-{
+void MainWindow::compileSourceCode() {
     output->clear();
 
     const std::string sourceCode = editor->toPlainText().toStdString();
@@ -180,24 +158,19 @@ void MainWindow::compileSourceCode()
     QTextCharFormat warningFormat = defaultFormat;
     warningFormat.setForeground(Qt::darkYellow);
 
-    for (int i = 0; i < lines.size(); ++i)
-    {
+    for (int i = 0; i < lines.size(); ++i) {
         const QString &line = lines.at(i);
         QTextCharFormat *format = &defaultFormat;
 
-        if (line.startsWith("[ERRO"))
-        {
+        if (line.startsWith("[ERRO")) {
             format = &errorFormat;
-        }
-        else if (line.startsWith("[AVISO]"))
-        {
+        } else if (line.startsWith("[AVISO]")) {
             format = &warningFormat;
         }
 
         cursor.setCharFormat(*format);
         cursor.insertText(line);
-        if (i + 1 < lines.size())
-        {
+        if (i + 1 < lines.size()) {
             cursor.insertText("\n");
         }
     }
@@ -206,32 +179,26 @@ void MainWindow::compileSourceCode()
     updateSymbolsTable(result.symbols);
 }
 
-void MainWindow::updateSymbolsTable(const std::vector<SymbolRow> &symbols)
-{
+void MainWindow::updateSymbolsTable(const std::vector<SymbolRow> &symbols) {
     symbolsTable->setRowCount(static_cast<int>(symbols.size()));
 
-    for (int row = 0; row < static_cast<int>(symbols.size()); ++row)
-    {
+    for (int row = 0; row < static_cast<int>(symbols.size()); ++row) {
         const SymbolRow &symbol = symbols[static_cast<std::size_t>(row)];
         const QString arrSizeText = symbol.arrSize > 0 ? QString::number(symbol.arrSize) : "";
-        const QString ownerText = symbol.ownerFunction.empty() ? "" : QString::fromStdString(symbol.ownerFunction);
-
-        QString valueText;
-        if(symbol.value.empty() && symbol.varType == VariableTypes::FUNCTION){
-            valueText = "";
-        }else{
-            valueText = symbol.value.empty() ? "mem garbage" : QString::fromStdString(symbol.value);
-        }
+        const QString ownerText =
+            symbol.ownerFunction.empty() ? "" : QString::fromStdString(symbol.ownerFunction);
 
         symbolsTable->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(symbol.symbol)));
         symbolsTable->setItem(row, 1, new QTableWidgetItem(variableTypeToString(symbol.varType)));
         symbolsTable->setItem(row, 2, new QTableWidgetItem(ownerText));
         symbolsTable->setItem(row, 3, new QTableWidgetItem(dataTypeToString(symbol.dataType)));
         symbolsTable->setItem(row, 4, new QTableWidgetItem(arrSizeText));
-        symbolsTable->setItem(row, 5, new QTableWidgetItem(valueText));
-        symbolsTable->setItem(row, 6, new QTableWidgetItem(symbol.isUsed ? "true" : "false"));
-        symbolsTable->setItem(row, 7, new QTableWidgetItem(symbol.isInitialized ? "true" : "false"));
-        symbolsTable->setItem(row, 8, new QTableWidgetItem(QString::number(symbol.sequence)));
-        symbolsTable->setItem(row, 9, new QTableWidgetItem(symbol.scope == 0 ? "global" : QString::number(symbol.scope)));
+        symbolsTable->setItem(row, 5, new QTableWidgetItem(symbol.isUsed ? "true" : "false"));
+        symbolsTable->setItem(row, 6,
+                              new QTableWidgetItem(symbol.isInitialized ? "true" : "false"));
+        symbolsTable->setItem(row, 7, new QTableWidgetItem(QString::number(symbol.sequence)));
+        symbolsTable->setItem(
+            row, 8,
+            new QTableWidgetItem(symbol.scope == 0 ? "global" : QString::number(symbol.scope)));
     }
 }
