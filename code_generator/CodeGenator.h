@@ -48,20 +48,23 @@ enum class BipSpecialRegister {
 };
 
 class CodeGenerator {
-public:
-    std::string generate();
 private:
-    CodeGenerator();
     std::vector<std::string> data;
     std::vector<std::string> text;
     std::vector<bool> tempPointers = {false, false, false};
-
+    
     void generateData(const std::vector<SymbolRow> &symbols);
+public:
+    CodeGenerator();
+    std::string generate();
+    std::string generateWithSymbols(const std::vector<SymbolRow> &symbols);
+    void clear();
+    void newLine();
 
     void store(std::string var);
     void load(std::string var);
     void loadi(int value);
-
+    
     void add(std::string var);
     void addi(int value);
     void sub(std::string var);

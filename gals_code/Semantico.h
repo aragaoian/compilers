@@ -4,6 +4,7 @@
 #include "Token.h"
 #include "SemanticError.h"
 #include "../symbols_table/SymbolsTableManager.h"
+#include "../code_generator/CodeGenator.h"
 #include <stack>
 #include <string>
 #include <utility>
@@ -25,6 +26,7 @@ public:
     Semantico();
     void executeAction(int action, const Token *token);
     std::vector<SymbolRow> getSymbolRows() const;
+    std::string getGeneratedCode();
     void logDeclaredButNotUsed();
     void logNonInitializedVariables();
     std::vector<std::string> getMessages() const;
@@ -36,6 +38,7 @@ private:
 
     SymbolsTableManager stManager;
     Scope *currentScope = nullptr;
+    CodeGenerator codeGenerator;
 
     std::stack<std::string> ids;
     std::stack<VariableTypes> variableTypes;

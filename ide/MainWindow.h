@@ -6,6 +6,8 @@
 #include <QAction>
 #include <QMainWindow>
 #include <QPlainTextEdit>
+#include <QPushButton>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QToolBar>
 #include <QWidget>
@@ -25,6 +27,9 @@ private:
 
     QPlainTextEdit *editor;
     QPlainTextEdit *output;
+    QPlainTextEdit *generatedCode;
+    QTabWidget *outputTabs;
+    QPushButton *copyCodeButton;
     QTableWidget *symbolsTable;
     QWidget *symbolsPanel;
     QAction *compileAction;

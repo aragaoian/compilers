@@ -1,13 +1,17 @@
 #include "MainWindow.h"
 
 #include <QAbstractItemView>
+#include <QClipboard>
 #include <QFont>
+#include <QGuiApplication>
 #include <QHeaderView>
+#include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
 #include <QMenuBar>
 #include <QPalette>
 #include <QSplitter>
+#include <QTabWidget>
 #include <QTableWidgetItem>
 #include <QTextCharFormat>
 #include <QTextCursor>
@@ -50,10 +54,12 @@ static QString dataTypeToString(DataTypes type) {
 }
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), editor(new QPlainTextEdit(this)), output(new QPlainTextEdit(this)),
-      symbolsTable(new QTableWidget(this)), symbolsPanel(new QWidget(this)),
-      compileAction(new QAction("Compilar", this)),
-      toggleSymbolsAction(new QAction("Tabela de Símbolos", this)), toolbar(new QToolBar(this)) {
+        : QMainWindow(parent), editor(new QPlainTextEdit(this)), output(new QPlainTextEdit(this)),
+            generatedCode(new QPlainTextEdit(this)), outputTabs(new QTabWidget(this)),
+            copyCodeButton(new QPushButton("Copiar", this)),
+            symbolsTable(new QTableWidget(this)), symbolsPanel(new QWidget(this)),
+            compileAction(new QAction("Compilar", this)),
+            toggleSymbolsAction(new QAction("Tabela de Símbolos", this)), toolbar(new QToolBar(this)) {
     setWindowTitle("I(an)DE - Compilador Françês");
     resize(980, 640);
 
@@ -79,6 +85,10 @@ void MainWindow::setupActions() {
     toolbar->addAction(compileAction);
     toolbar->addAction(toggleSymbolsAction);
     addToolBar(toolbar);
+
+    connect(copyCodeButton, &QPushButton::clicked, this, [this]() {
+        QGuiApplication::clipboard()->setText(generatedCode->toPlainText());
+    });
 }
 
 void MainWindow::setupLayout() {
@@ -93,6 +103,10 @@ void MainWindow::setupLayout() {
     output->setReadOnly(true);
     output->setPlaceholderText("Mensagens de compilação...");
 
+    generatedCode->setFont(monoFont);
+    generatedCode->setReadOnly(true);
+    generatedCode->setPlaceholderText("Código gerado...");
+
     symbolsTable->setColumnCount(9);
     symbolsTable->setHorizontalHeaderLabels({"Symbol", "Type", "Function", "Data Type",
                                              "Array Size", "Used", "Initialized", "Sequence",
@@ -104,6 +118,7 @@ void MainWindow::setupLayout() {
     QLabel *editorLabel = new QLabel("Código", this);
     QLabel *symbolsLabel = new QLabel("Tabela de Símbolos", this);
     QLabel *outputLabel = new QLabel("Saída", this);
+    QLabel *generatedLabel = new QLabel("Código Gerado", this);
 
     QWidget *editorPanel = new QWidget(this);
     QVBoxLayout *editorLayout = new QVBoxLayout(editorPanel);
@@ -114,10 +129,28 @@ void MainWindow::setupLayout() {
     symbolsLayout->addWidget(symbolsLabel);
     symbolsLayout->addWidget(symbolsTable);
 
+    QWidget *messagesTab = new QWidget(this);
+    QVBoxLayout *messagesLayout = new QVBoxLayout(messagesTab);
+    outputLabel->setParent(messagesTab);
+    messagesLayout->addWidget(outputLabel);
+    messagesLayout->addWidget(output);
+
+    QWidget *codeTab = new QWidget(this);
+    QVBoxLayout *codeLayout = new QVBoxLayout(codeTab);
+    QHBoxLayout *codeHeaderLayout = new QHBoxLayout();
+    generatedLabel->setParent(codeTab);
+    codeHeaderLayout->addWidget(generatedLabel);
+    codeHeaderLayout->addStretch();
+    codeHeaderLayout->addWidget(copyCodeButton);
+    codeLayout->addLayout(codeHeaderLayout);
+    codeLayout->addWidget(generatedCode);
+
+    outputTabs->addTab(messagesTab, "Mensagens");
+    outputTabs->addTab(codeTab, "Código Gerado");
+
     QWidget *outputPanel = new QWidget(this);
     QVBoxLayout *outputLayout = new QVBoxLayout(outputPanel);
-    outputLayout->addWidget(outputLabel);
-    outputLayout->addWidget(output);
+    outputLayout->addWidget(outputTabs);
 
     QSplitter *topSplitter = new QSplitter(Qt::Horizontal, this);
     topSplitter->addWidget(editorPanel);
@@ -139,6 +172,7 @@ void MainWindow::setupLayout() {
 
 void MainWindow::compileSourceCode() {
     output->clear();
+    generatedCode->clear();
 
     const std::string sourceCode = editor->toPlainText().toStdString();
     const CompilationResult result = compilerService.compile(sourceCode);
@@ -175,6 +209,10 @@ void MainWindow::compileSourceCode() {
         }
     }
     output->setTextCursor(cursor);
+
+    if (result.success) {
+        generatedCode->setPlainText(QString::fromStdString(result.generatedCode));
+    }
 
     updateSymbolsTable(result.symbols);
 }

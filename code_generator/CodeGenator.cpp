@@ -1,6 +1,8 @@
 #include <string>
 #include "CodeGenator.h"
 
+CodeGenerator::CodeGenerator() = default;
+
 void CodeGenerator::generateData(const std::vector<SymbolRow> &symbols){
     for(SymbolRow row: symbols){
         if(row.arrSize > 0){
@@ -63,8 +65,30 @@ std::string CodeGenerator::generate(){
 
     output += "\n.text\n";
 
-    for (std::string line : text)
+    for (std::string line : text){
+        if(line == "") {
+            output += "\n";
+            continue;
+        }
         output += "\t" + line + "\n";
-
+    }
+    
     return output;
+}
+
+std::string CodeGenerator::generateWithSymbols(const std::vector<SymbolRow> &symbols){
+    data.clear();
+    generateData(symbols);
+    return generate();
+}
+
+void CodeGenerator::clear(){
+    data.clear();
+    text.clear();
+    tempPointers.clear();
+    tempPointers = {false, false, false};
+}
+
+void CodeGenerator::newLine(){
+    text.push_back("");
 }

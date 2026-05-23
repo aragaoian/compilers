@@ -141,6 +141,7 @@ Semantico::Semantico() { reset(); }
 void Semantico::reset() {
     stManager.reset();
     currentScope = stManager.getRootScope();
+    codeGenerator.clear();
 
     while (!ids.empty()) {
         ids.pop();
@@ -200,8 +201,8 @@ void Semantico::logWarning(const std::string &message, const Token *token) {
 }
 
 void Semantico::executeAction(int action, const Token *token) {
-    std::cout << "Ação: " << action << ", Token: " << token->getId()
-              << ", Lexema: " << token->getLexeme() << std::endl;
+    // std::cout << "Ação: " << action << ", Token: " << token->getId()
+    //           << ", Lexema: " << token->getLexeme() << std::endl;
 
     switch (action) {
     case GUARDA_ID:
@@ -285,6 +286,13 @@ void Semantico::executeAction(int action, const Token *token) {
             break;
         }
         mt->isInitialized = true;
+
+        auto literal = literals.top();
+        literals.pop();
+        codeGenerator.loadi(stoi(literal.second));
+        codeGenerator.store(id);
+        codeGenerator.newLine();
+
         break;
     }
 
@@ -848,6 +856,10 @@ void Semantico::executeAction(int action, const Token *token) {
 
 std::vector<SymbolRow> Semantico::getSymbolRows() const {
     return stManager.collectSymbolsPreorder();
+}
+
+std::string Semantico::getGeneratedCode() {
+    return codeGenerator.generateWithSymbols(stManager.collectSymbolsPreorder());
 }
 
 void Semantico::logDeclaredButNotUsed() {
