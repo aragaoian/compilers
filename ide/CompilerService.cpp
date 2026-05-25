@@ -31,27 +31,41 @@ CompilationResult CompilerService::compile(const std::string &sourceCode) const
         sintatico.parse(&lexico, &semantico);
         semantico.logDeclaredButNotUsed();
         semantico.logNonInitializedVariables();
-        return {true, appendSemanticMessages("[SUCESSO] Compilacao concluida sem erros lexicos/sintaticos.", semantico.getMessages()), semantico.getSymbolRows()};
+        return {true,
+            appendSemanticMessages(
+                "[SUCESSO] Compilacao concluida sem erros lexicos/sintaticos.",
+                semantico.getMessages()),
+            semantico.getSymbolRows(),
+            semantico.getGeneratedCode()};
     }
     catch (const LexicalError &error)
     {
         std::ostringstream stream;
         stream << "[ERRO LEXICO] " << error.getMessage() << " (" 
              << formatPosition(normalizedSource, error.getPosition()) << ")";
-        return {false, appendSemanticMessages(stream.str(), semantico.getMessages()), semantico.getSymbolRows()};
+        return {false,
+            appendSemanticMessages(stream.str(), semantico.getMessages()),
+            semantico.getSymbolRows(),
+            ""};
     }
     catch (const SyntacticError &error)
     {
         std::ostringstream stream;
         stream << "[ERRO SINTATICO] " << error.getMessage() << " (" 
                << formatPosition(normalizedSource, error.getPosition()) << ")";
-        return {false, appendSemanticMessages(stream.str(), semantico.getMessages()), semantico.getSymbolRows()};
+        return {false,
+            appendSemanticMessages(stream.str(), semantico.getMessages()),
+            semantico.getSymbolRows(),
+            ""};
     }
     catch (const SemanticError &error){
         std::ostringstream stream;
         stream << "[ERRO SEMANTICO] " << error.getMessage() << " (" 
                << formatPosition(normalizedSource, error.getPosition()) << ")";
-        return {false, appendSemanticMessages(stream.str(), semantico.getMessages()), semantico.getSymbolRows()};
+        return {false,
+            appendSemanticMessages(stream.str(), semantico.getMessages()),
+            semantico.getSymbolRows(),
+            ""};
     }
 }
 

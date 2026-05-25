@@ -115,15 +115,11 @@ NOT = ID: "pas"
 <tipo_dado>
 <tipo_variavel>
 <dimensoes>
+<acesso_lvalue>
 <condicao>
-<inc_dec>
-<prefixo>
-<posfixo>
 <comando>
 <comando_id>
-<pre_fixo>
 <resto_comando_id>
-<decisao_atribuicao_ou_posfixo>
 <declaracao>
 <identificadores>
 <lista_ids>
@@ -151,6 +147,7 @@ NOT = ID: "pas"
 <exp9>
 <exp10>
 <resto_id_exp>
+<acesso_vetor_exp>
 <op_rel>
 <op_negativa>
 <op_bitwise>
@@ -167,6 +164,8 @@ NOT = ID: "pas"
 <saida>
 <resto_saida>
 <variavel_saida>
+<tipo_variavel_io>
+<dimensoes_io>
 <loops>
 <for_loop>
 <init_for>
@@ -217,12 +216,6 @@ NOT = ID: "pas"
 
 <condicao> ::= "(" <exp> ")";
 
-<inc_dec> ::= INCREMENT | DECREMENT;
-
-// Ajustados para disparar #12 apenas no fim
-<prefixo> ::= <inc_dec> ID #1 <tipo_variavel> #12;
-<posfixo> ::= ID #1 <tipo_variavel> <inc_dec> #12;
-
 // ---------------------------------------------------------------------------------------------------
 // Comandos
 <comando> ::= <declaracao> ";"
@@ -234,16 +227,10 @@ NOT = ID: "pas"
             | <subrotina>
             | <tipo_retorno> ";";
 
-<comando_id> ::= <pre_fixo> ID #1 <resto_comando_id>;
+<comando_id> ::= ID #1 <resto_comando_id>;
 
-<pre_fixo> ::= <inc_dec> | î;
-
-<resto_comando_id> ::= <tipo_variavel> <decisao_atribuicao_ou_posfixo>
+<resto_comando_id> ::= <acesso_lvalue> <tipo_atribuicao> <rvalue> #11
                      | "(" <argumentos> ")" #12;
-
-<decisao_atribuicao_ou_posfixo> ::= <tipo_atribuicao> <rvalue> #11
-                                 | <inc_dec> #12
-                                 | #12;
 
 // ---------------------------------------------------------------------------------------------------
 // Declaração
@@ -309,8 +296,11 @@ NOT = ID: "pas"
           | <exponential> 
           | "(" <exp> ")";
 
-<resto_id_exp> ::= <tipo_variavel> #12 
+<resto_id_exp> ::= <acesso_vetor_exp>
+                | î #12
                 | "(" <argumentos> ")" #12;
+
+<acesso_vetor_exp> ::= "[" #32 <exp> "]" #33;
 
 <op_rel> ::= GREATER_EQ | LESSER_EQ | EQUAL_CONDITION | DIFFERENT_CONDITION | GREATER | LESSER; 
 <op_negativa> ::= SUB | BITWISE_NOT | NOT;
@@ -325,11 +315,12 @@ NOT = ID: "pas"
 
 <atribuicao> ::= <lvalue> <tipo_atribuicao> <rvalue> #11;
 
-<lvalue> ::= ID #1 <tipo_variavel>;
+<lvalue> ::= ID #1 <acesso_lvalue>;
 
-<rvalue> ::= <exp>
-          | <prefixo>
-          | <posfixo>;
+<acesso_lvalue> ::= "[" <exp> "]" #34
+                  | î;
+
+<rvalue> ::= <exp>;
 
 <tipo_atribuicao> ::= EQUAL
                     | EQUAL_SUM
@@ -337,17 +328,23 @@ NOT = ID: "pas"
 
 // ---------------------------------------------------------------------------------------------------
 // IO 
-<entrada> ::= CIN <resto_entrada>;
+<entrada> ::= CIN <resto_entrada> #25;
 <resto_entrada> ::= RIGHT_SHIFT <variavel_entrada> <resto_entrada> | î;
-<variavel_entrada> ::= ID #1 <tipo_variavel>;
+<variavel_entrada> ::= ID #27 <tipo_variavel_io>;
 
-<saida> ::= COUT <resto_saida>;
+<saida> ::= COUT <resto_saida> #26;
 <resto_saida> ::= LEFT_SHIFT <variavel_saida> <resto_saida> | î;
-<variavel_saida> ::= ID #1 <tipo_variavel>
-                  | STRING_VALUE #3
-                  | CHAR_VALUE #3
-                  | INT_VALUE_DECIMAL #3
-                  | FLOAT_VALUE #3; 
+<variavel_saida> ::= ID #28 <tipo_variavel_io>
+                  | STRING_VALUE
+                  | CHAR_VALUE
+                  | INT_VALUE_DECIMAL #29
+                  | FLOAT_VALUE;
+
+<tipo_variavel_io> ::= <dimensoes_io> #30
+                | î;
+
+<dimensoes_io> ::= "[" <exp> "]" #31 <dimensoes_io>
+             | "[" <exp> "]" #31;
 
 // ---------------------------------------------------------------------------------------------------
 // Loops
@@ -370,9 +367,7 @@ NOT = ID: "pas"
 <lista_after> ::= <after_item> <lista_after_rest>;
 <lista_after_rest> ::= "," <after_item> <lista_after_rest> | î;
 
-<after_item> ::= <atribuicao>
-               | <prefixo>
-               | <posfixo>;
+<after_item> ::= <atribuicao>;
 
 <while> ::= WHILE <condicao> <bloco>;
 

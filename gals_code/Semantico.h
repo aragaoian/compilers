@@ -1,47 +1,66 @@
 #ifndef SEMANTICO_H
 #define SEMANTICO_H
 
-#include "Token.h"
-#include "SemanticError.h"
+#include "../code_generator/CodeGenator.h"
 #include "../symbols_table/SymbolsTableManager.h"
+#include "SemanticError.h"
+#include "Token.h"
 #include <stack>
 #include <string>
 #include <utility>
 #include <vector>
 
-enum class Operators{
-    SUM,
-    SUB,
-    MUL,
-    DIV,
-    OR,
-    AND,
-    NOT
+enum class Operators { SUM, SUB, MUL, DIV, OR, AND, NOT };
+
+enum class ValueKind { LITERAL, VARIABLE, EXPRESSION, ACCUMULATOR, VECTOR_ACCESS };
+
+enum class IoContext { NONE, INPUT_COMMAND, OUTPUT_COMMAND };
+
+struct SemanticValue {
+    DataTypes dataType;
+    std::string lexeme;
+    ValueKind kind = ValueKind::LITERAL;
 };
 
-class Semantico
-{
-public:
+class Semantico {
+  public:
     Semantico();
     void executeAction(int action, const Token *token);
     std::vector<SymbolRow> getSymbolRows() const;
+    std::string getGeneratedCode();
     void logDeclaredButNotUsed();
     void logNonInitializedVariables();
     std::vector<std::string> getMessages() const;
     void reset();
-private:
+
+  private:
     void logInfo(const std::string &message, const Token *token);
     void logWarning(const std::string &message, const Token *token);
+    int parseCodegenInteger(const SemanticValue &value, const Token *token) const;
+    void emitLoadValue(const SemanticValue &value, const Token *token);
+    void emitApplyOperator(Operators op, const SemanticValue &value, const Token *token);
+    void emitStoreInitializedValue(const std::string &id, const SemanticValue &value,
+                                   const Token *token);
+    void materializeAccumulator(SemanticValue &value);
+    void freeExpressionTemp(const SemanticValue &value);
     std::vector<std::string> messages;
 
     SymbolsTableManager stManager;
     Scope *currentScope = nullptr;
+    CodeGenerator codeGenerator;
 
     std::stack<std::string> ids;
     std::stack<VariableTypes> variableTypes;
     std::stack<DataTypes> dataTypes;
-    std::stack<std::pair<DataTypes, std::string>> literals;
-    std::stack<std::pair<DataTypes, std::string>> declLiterals;
+    std::stack<SemanticValue> literals;
+    std::stack<SemanticValue> declLiterals;
+
+    std::vector<SemanticValue> inputSemanticValues;
+    std::vector<SemanticValue> outputSemanticValues;
+    IoContext currentIoContext = IoContext::NONE;
+    bool hasPendingVectorAssignment = false;
+    std::string pendingVectorAssignmentIndexTemp;
+
     std::stack<int> arrSizes;
     int pendingArraySize = 1;
     bool hasPendingArraySize = false;
@@ -60,10 +79,9 @@ private:
     int currFuncParamatersCounter = 0;
     std::string currentFunctionName;
     DataTypes currentReturnType = DataTypes::VOID;
-    std::vector<std::pair<DataTypes, std::string>> pendingArgs;
+    std::vector<SemanticValue> pendingArgs;
 
     std::stack<Operators> operators;
-
 };
 
 #endif

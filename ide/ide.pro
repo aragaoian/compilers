@@ -2,7 +2,7 @@ QT += widgets
 
 CONFIG += c++17
 
-INCLUDEPATH += $$PWD $$PWD/../gals_code $$PWD/../symbols_table
+INCLUDEPATH += $$PWD $$PWD/../gals_code $$PWD/../symbols_table $$PWD/../code_generator
 
 SOURCES += \
     main.cpp \
@@ -12,7 +12,8 @@ SOURCES += \
     ../gals_code/Lexico.cpp \
     ../gals_code/Sintatico.cpp \
     ../gals_code/Semantico.cpp \
-    ../symbols_table/SymbolsTableManager.cpp
+    ../symbols_table/SymbolsTableManager.cpp \
+    ../code_generator/CodeGenator.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -27,6 +28,7 @@ HEADERS += \
     ../gals_code/Sintatico.h \
     ../gals_code/Token.h \
     ../symbols_table/SymbolsTableManager.h
+    ../code_generator/CodeGenator.h
 
 TARGET = ide
 TEMPLATE = app

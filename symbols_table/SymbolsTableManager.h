@@ -1,10 +1,10 @@
-#ifndef SYMBOLSTABLE_H    
+#ifndef SYMBOLSTABLE_H
 #define SYMBOLSTABLE_H
 
-#include <unordered_map>
-#include <vector>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 enum class VariableTypes { SCALAR, ARRAY, FUNCTION, PARAMETER, ARGUMENT };
 enum class DataTypes { INT, FLOAT, BOOLEAN, CHAR, STRING, VOID };
@@ -17,10 +17,10 @@ struct MetaData {
     bool isUsed = false;
     bool isInitialized = false;
     int sequence = 0;
+    int insertionOrder = -1;
+    std::string initialValue = "0";
 
-    bool operator==(const MetaData& other) const {
-        return isInitialized == other.isInitialized;
-    }
+    bool operator==(const MetaData &other) const { return isInitialized == other.isInitialized; }
 };
 
 struct SymbolRow {
@@ -32,6 +32,8 @@ struct SymbolRow {
     bool isUsed = false;
     bool isInitialized = false;
     int sequence = 0;
+    int insertionOrder = -1;
+    std::string initialValue = "0";
     int scope;
 };
 
@@ -43,11 +45,13 @@ struct Scope {
 };
 
 class SymbolsTableManager {
-private:
+  private:
     std::unique_ptr<Scope> scopes;
     int scopeIdCounter = 0;
+    int symbolInsertionCounter = 0;
     MetaData *findSymbol(std::string symbolName, Scope *currScope);
-public:
+
+  public:
     SymbolsTableManager();
     ~SymbolsTableManager();
     void reset();
@@ -65,7 +69,6 @@ public:
     bool useSymbol(std::string symbolName, Scope *scope);
     bool initializeSymbol(std::string symbolName, Scope *scope);
     MetaData *returnMetaData(std::string symbolName, Scope *currScope);
-
 };
 
 #endif

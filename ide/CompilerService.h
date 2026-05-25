@@ -11,6 +11,7 @@ struct CompilationResult
     bool success;
     std::string message;
     std::vector<SymbolRow> symbols;
+    std::string generatedCode;
 };
 
 class CompilerService
