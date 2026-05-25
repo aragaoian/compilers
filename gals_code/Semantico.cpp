@@ -5,6 +5,11 @@
 #include <iostream>
 #include <stdexcept>
 
+/*TODO
+1. Escopo vazando com 2 ifs
+2. lixo de memoria e.g a = a + 1;
+*/
+
 #define GUARDA_ID 1
 #define GUARDA_TIPO_DADO 2
 #define GUARDA_LITERAL 3
