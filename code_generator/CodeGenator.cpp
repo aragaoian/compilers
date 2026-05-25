@@ -1,94 +1,98 @@
-#include <string>
 #include "CodeGenator.h"
+#include <string>
 
 CodeGenerator::CodeGenerator() = default;
 
-void CodeGenerator::generateData(const std::vector<SymbolRow> &symbols){
-    for(SymbolRow row: symbols){
-        if(row.arrSize > 0){
-            std::string init = "";
-            for(int i = 0; i < row.arrSize; i++){
-                init += "0";
-                if(i != row.arrSize - 1) init += ",";
+void CodeGenerator::generateData(const std::vector<SymbolRow> &symbols) {
+    for (SymbolRow row : symbols) {
+        if (row.arrSize > 0) {
+            if (row.isInitialized && row.initialValue != "0") {
+                data.push_back(row.symbol + ": " + row.initialValue);
+                continue;
             }
-            data.push_back(row.symbol + ": " + init);
-        }else{
-            /* NOTE
-            Vou inicilizar tudo como 0
-            mesmo que a variável esteja sendo inicianalizada
-            E.g 'let a: ent = 1'
-            .data
-                a: 0
-            .text
-                LDI 1
-                STO a*/  
-            data.push_back(row.symbol + ": 0");
+
+            std::string initialValues = "";
+            for (int i = 0; i < row.arrSize; i++) {
+                initialValues += "0";
+                if (i != row.arrSize - 1) {
+                    initialValues += ",";
+                }
+            }
+            data.push_back(row.symbol + ": " + initialValues);
+        } else {
+            data.push_back(row.symbol + ": " + row.initialValue);
         }
     }
 }
 
-void CodeGenerator::store(std::string var){
-    text.push_back("STO " + var);
+void CodeGenerator::store(std::string var) { text.push_back("STO " + var); }
+
+void CodeGenerator::load(std::string var) { text.push_back("LD " + var); }
+
+void CodeGenerator::loadi(int value) { text.push_back("LDI " + std::to_string(value)); }
+
+void CodeGenerator::loadVector(const std::string &var) { text.push_back("LDV " + var); }
+
+void CodeGenerator::storeVector(const std::string &var) { text.push_back("STOV " + var); }
+
+void CodeGenerator::add(std::string var) { text.push_back("ADD " + var); }
+
+void CodeGenerator::addi(int value) { text.push_back("ADDI " + std::to_string(value)); }
+
+void CodeGenerator::sub(std::string var) { text.push_back("SUB " + var); }
+
+void CodeGenerator::subi(int value) { text.push_back("SUBI " + std::to_string(value)); }
+
+std::string CodeGenerator::getFreeTemp() {
+    const std::string temps[] = {TEMP1, TEMP2, TEMP3};
+    for (const std::string &temp : temps) {
+        if (!tempPointers[temp]) {
+            tempPointers[temp] = true;
+            return temp;
+        }
+    }
+
+    return "";
 }
 
-void CodeGenerator::load(std::string var){
-    text.push_back("LD " + var);
+void CodeGenerator::freeTemp(const std::string &temp) {
+    auto it = tempPointers.find(temp);
+    if (it != tempPointers.end()) {
+        it->second = false;
+    }
 }
 
-void CodeGenerator::loadi(int value){
-    text.push_back("LDI " + std::to_string(value));
-}
-
-void CodeGenerator::add(std::string var){
-    text.push_back("ADD " + var);
-}
-
-void CodeGenerator::addi(int value){
-    text.push_back("ADDI " + std::to_string(value));
-}
-
-void CodeGenerator::sub(std::string var){
-    text.push_back("SUB " + var);
-}
-
-void CodeGenerator::subi(int value){
-    text.push_back("SUBI " + std::to_string(value));
-}
-
-std::string CodeGenerator::generate(){
+std::string CodeGenerator::generate() {
     std::string output;
 
     output += ".data\n";
-    for(std::string line: data){
+    for (std::string line : data) {
         output += "\t" + line + "\n";
     }
 
     output += "\n.text\n";
 
-    for (std::string line : text){
-        if(line == "") {
+    for (std::string line : text) {
+        if (line == "") {
             output += "\n";
             continue;
         }
         output += "\t" + line + "\n";
     }
-    
+
     return output;
 }
 
-std::string CodeGenerator::generateWithSymbols(const std::vector<SymbolRow> &symbols){
+std::string CodeGenerator::generateWithSymbols(const std::vector<SymbolRow> &symbols) {
     data.clear();
     generateData(symbols);
     return generate();
 }
 
-void CodeGenerator::clear(){
+void CodeGenerator::clear() {
     data.clear();
     text.clear();
-    tempPointers.clear();
-    tempPointers = {false, false, false};
+    tempPointers = {{TEMP1, false}, {TEMP2, false}, {TEMP3, false}};
 }
 
-void CodeGenerator::newLine(){
-    text.push_back("");
-}
+void CodeGenerator::newLine() { text.push_back(""); }

@@ -1,6 +1,7 @@
-#include <vector>
-#include <string>
 #include "SymbolsTableManager.h"
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 const std::string TEMP1 = "1000";
 const std::string TEMP2 = "1001";
@@ -41,30 +42,36 @@ enum class BipInstruction {
     SRL
 };
 
-enum class BipSpecialRegister {
-    IN_PORT,
-    OUT_PORT,
-    INDR
-};
+enum class BipSpecialRegister { IN_PORT, OUT_PORT, INDR };
 
 class CodeGenerator {
-private:
+  private:
     std::vector<std::string> data;
     std::vector<std::string> text;
-    std::vector<bool> tempPointers = {false, false, false};
-    
+    // NOTE
+    // true -> sendo usado
+    // false -> não está sendo usado
+    std::unordered_map<std::string, bool> tempPointers = {
+        {TEMP1, false}, {TEMP2, false}, {TEMP3, false}};
+
     void generateData(const std::vector<SymbolRow> &symbols);
-public:
+
+  public:
     CodeGenerator();
     std::string generate();
     std::string generateWithSymbols(const std::vector<SymbolRow> &symbols);
     void clear();
     void newLine();
 
+    std::string getFreeTemp();
+    void freeTemp(const std::string &temp);
+
     void store(std::string var);
     void load(std::string var);
     void loadi(int value);
-    
+    void loadVector(const std::string &var);
+    void storeVector(const std::string &var);
+
     void add(std::string var);
     void addi(int value);
     void sub(std::string var);

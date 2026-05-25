@@ -3,17 +3,7 @@
 
 #include <algorithm>
 #include <iostream>
-
-/*
-TODO
-1. Considerar separar a declaração
-(ter uma ação semântica para declaração de variável, outra para declaração de parâmetro, outra para
-função, etc)
-3. Os valores não precisam estar na tabela de símbolos (isso não é pra ser resolvido em tempo de
-compilacão) [X]
-4. Colocar a abertura de escopo e leitura de parametros no for
-5. Criar os warning certos na atribuicao [X]
-*/
+#include <stdexcept>
 
 #define GUARDA_ID 1
 #define GUARDA_TIPO_DADO 2
@@ -22,13 +12,13 @@ compilacão) [X]
 #define TIPO_VETOR 5
 #define TIPO_PARAMETRO 6
 #define TIPO_ARGUMENTO 7
-#define TIPO_Função 8
+#define TIPO_FUNCAO 8
 #define ENTRA_ESCOPO 9
 #define SAI_ESCOPO 10
 #define ATRIBUICAO 11
 #define USO_ID 12
 #define MARCA_INICIALIZACAO 13
-#define DECLARA 14
+#define DECLARACAO 14
 #define TAMANHO_VETOR 15
 #define ENTRA_ESCOPO_PARAMETROS 16
 #define SAI_ESCOPO_PARAMETROS 17
@@ -36,9 +26,19 @@ compilacão) [X]
 #define CONTA_INIT_PENDENTE 19
 #define INICIA_CONTEXTO_INIT 20
 #define FINALIZA_CONTEXTO_INIT 21
-#define AVALIA_EXPRESSAO 22
+#define EXPRESSAO 22
 #define GUARDA_OPERADOR 23
 #define AVALIA_RETORNO 24
+#define INPUT 25
+#define OUTPUT 26
+#define GUARDA_ID_INPUT 27
+#define GUARDA_ID_OUTPUT 28
+#define GUARDA_LITERAL_OUTPUT 29
+#define IO_TIPO_VETOR 30
+#define IO_INDICE_VETOR 31
+#define PREPARA_INDICE_EXP_VETOR 32
+#define ACESSO_EXP_VETOR 33
+#define INDICE_ATRIBUICAO_VETOR 34
 
 static std::string varTypeEnumToString(VariableTypes varType) {
     switch (varType) {
@@ -105,6 +105,10 @@ static DataTypes dataTypeFromToken(TokenId tokenId) {
     }
 }
 
+static SemanticValue semanticLiteralFromToken(const Token *token) {
+    return {dataTypeFromToken(token->getId()), token->getLexeme(), ValueKind::LITERAL};
+}
+
 enum class CompatibilityResult { Ok, Warn, Error };
 
 static CompatibilityResult checkAssignmentCompatibility(DataTypes target, DataTypes source) {
@@ -138,6 +142,122 @@ static CompatibilityResult checkAssignmentCompatibility(DataTypes target, DataTy
 
 Semantico::Semantico() { reset(); }
 
+int Semantico::parseCodegenInteger(const SemanticValue &value, const Token *token) const {
+    if (value.kind != ValueKind::LITERAL) {
+        throw SemanticError("Valor inválido para geração de código.", token->getPosition());
+    }
+
+    std::string lexeme = value.lexeme;
+
+    try {
+        switch (value.dataType) {
+        case DataTypes::BOOLEAN:
+            if (lexeme == "vrai") {
+                return 1;
+            }
+            if (lexeme == "faux") {
+                return 0;
+            }
+            break;
+        case DataTypes::CHAR:
+            if (lexeme.size() >= 3 && lexeme.front() == '\'' && lexeme.back() == '\'') {
+                return static_cast<unsigned char>(lexeme[1]);
+            }
+            break;
+        case DataTypes::FLOAT:
+            return static_cast<int>(std::stod(lexeme));
+        case DataTypes::INT:
+            if (lexeme.size() > 2 && lexeme[0] == '0' && (lexeme[1] == 'b' || lexeme[1] == 'B')) {
+                return std::stoi(lexeme.substr(2), nullptr, 2);
+            }
+            return std::stoi(lexeme, nullptr, 0);
+        case DataTypes::STRING:
+            return 0;
+        default:
+            break;
+        }
+    } catch (const std::exception &) {
+        throw SemanticError("Literal inválido para geração de código.", token->getPosition());
+    }
+
+    throw SemanticError("Tipo não suportado na geração de código.", token->getPosition());
+}
+
+void Semantico::emitLoadValue(const SemanticValue &value, const Token *token) {
+    if (value.kind == ValueKind::ACCUMULATOR) {
+        return;
+    }
+
+    if (value.kind == ValueKind::VARIABLE || value.kind == ValueKind::EXPRESSION) {
+        codeGenerator.load(value.lexeme);
+        return;
+    }
+
+    if (value.kind == ValueKind::LITERAL) {
+        codeGenerator.loadi(parseCodegenInteger(value, token));
+        return;
+    }
+
+    throw SemanticError("Expressão ainda não suportada na geração de código.",
+                        token->getPosition());
+}
+
+void Semantico::emitApplyOperator(Operators op, const SemanticValue &value, const Token *token) {
+    if (value.kind == ValueKind::VARIABLE || value.kind == ValueKind::EXPRESSION) {
+        if (op == Operators::SUM) {
+            codeGenerator.add(value.lexeme);
+            return;
+        }
+        if (op == Operators::SUB) {
+            codeGenerator.sub(value.lexeme);
+            return;
+        }
+    }
+
+    if (value.kind == ValueKind::LITERAL) {
+        int parsedValue = parseCodegenInteger(value, token);
+        if (op == Operators::SUM) {
+            codeGenerator.addi(parsedValue);
+            return;
+        }
+        if (op == Operators::SUB) {
+            codeGenerator.subi(parsedValue);
+            return;
+        }
+    }
+
+    throw SemanticError("Operador ainda não suportado na geração de código.", token->getPosition());
+}
+
+void Semantico::emitStoreInitializedValue(const std::string &id, const SemanticValue &value,
+                                          const Token *token) {
+    emitLoadValue(value, token);
+    codeGenerator.store(id);
+    codeGenerator.newLine();
+    freeExpressionTemp(value);
+}
+
+void Semantico::materializeAccumulator(SemanticValue &value) {
+    if (value.kind != ValueKind::ACCUMULATOR) {
+        return;
+    }
+
+    std::string temp = codeGenerator.getFreeTemp();
+    if (temp.empty()) {
+        throw SemanticError("Não há temporários livres para avaliar a expressão.");
+    }
+    codeGenerator.store(temp);
+    codeGenerator.newLine();
+    value.lexeme = temp;
+    value.kind = ValueKind::EXPRESSION;
+}
+
+void Semantico::freeExpressionTemp(const SemanticValue &value) {
+    if (value.kind == ValueKind::EXPRESSION) {
+        codeGenerator.freeTemp(value.lexeme);
+    }
+}
+
 void Semantico::reset() {
     stManager.reset();
     currentScope = stManager.getRootScope();
@@ -158,6 +278,11 @@ void Semantico::reset() {
     while (!declLiterals.empty()) {
         declLiterals.pop();
     }
+    inputSemanticValues.clear();
+    outputSemanticValues.clear();
+    currentIoContext = IoContext::NONE;
+    hasPendingVectorAssignment = false;
+    pendingVectorAssignmentIndexTemp.clear();
     while (!arrSizes.empty()) {
         arrSizes.pop();
     }
@@ -201,8 +326,8 @@ void Semantico::logWarning(const std::string &message, const Token *token) {
 }
 
 void Semantico::executeAction(int action, const Token *token) {
-    // std::cout << "Ação: " << action << ", Token: " << token->getId()
-    //           << ", Lexema: " << token->getLexeme() << std::endl;
+    std::cout << "Ação: " << action << ", Token: " << token->getId()
+              << ", Lexema: " << token->getLexeme() << std::endl;
 
     switch (action) {
     case GUARDA_ID:
@@ -215,9 +340,9 @@ void Semantico::executeAction(int action, const Token *token) {
 
     case GUARDA_LITERAL:
         if (inInitContext) {
-            declLiterals.push({dataTypeFromToken(token->getId()), token->getLexeme()});
+            declLiterals.push(semanticLiteralFromToken(token));
         } else {
-            literals.push({dataTypeFromToken(token->getId()), token->getLexeme()});
+            literals.push(semanticLiteralFromToken(token));
         }
         break;
 
@@ -241,10 +366,22 @@ void Semantico::executeAction(int action, const Token *token) {
         break;
 
     case TIPO_ARGUMENTO:
-        variableTypes.push(VariableTypes::ARGUMENT);
+        if (inInitContext) {
+            if (declLiterals.empty()) {
+                throw SemanticError("Argumento inválido.", token->getPosition());
+            }
+            pendingArgs.push_back(declLiterals.top());
+            declLiterals.pop();
+        } else {
+            if (literals.empty()) {
+                throw SemanticError("Argumento inválido.", token->getPosition());
+            }
+            pendingArgs.push_back(literals.top());
+            literals.pop();
+        }
         break;
 
-    case TIPO_Função:
+    case TIPO_FUNCAO:
         variableTypes.push(VariableTypes::FUNCTION);
         if (!ids.empty()) {
             currentFunctionName = ids.top();
@@ -278,7 +415,6 @@ void Semantico::executeAction(int action, const Token *token) {
         }
 
         std::string id = ids.top();
-        std::cout << id << std::endl;
         ids.pop();
 
         MetaData *mt = stManager.returnMetaData(id, currentScope);
@@ -289,9 +425,37 @@ void Semantico::executeAction(int action, const Token *token) {
 
         auto literal = literals.top();
         literals.pop();
-        codeGenerator.loadi(stoi(literal.second));
-        codeGenerator.store(id);
-        codeGenerator.newLine();
+        CompatibilityResult comp = checkAssignmentCompatibility(mt->dataType, literal.dataType);
+        if (comp == CompatibilityResult::Error) {
+            throw SemanticError("O tipo não é compatível.", token->getPosition());
+        }
+        if (comp == CompatibilityResult::Warn) {
+            logWarning("Compatibilidade de tipos com aviso.", token);
+        }
+
+        if (hasPendingVectorAssignment) {
+            std::string valueTemp = codeGenerator.getFreeTemp();
+            if (valueTemp.empty()) {
+                throw SemanticError("Não há temporários livres para avaliar a atribuição.",
+                                    token->getPosition());
+            }
+
+            emitLoadValue(literal, token);
+            codeGenerator.store(valueTemp);
+            freeExpressionTemp(literal);
+            codeGenerator.load(pendingVectorAssignmentIndexTemp);
+            codeGenerator.store("$indr");
+            codeGenerator.freeTemp(pendingVectorAssignmentIndexTemp);
+            codeGenerator.load(valueTemp);
+            codeGenerator.storeVector(id);
+            codeGenerator.freeTemp(valueTemp);
+            codeGenerator.newLine();
+
+            hasPendingVectorAssignment = false;
+            pendingVectorAssignmentIndexTemp.clear();
+        } else {
+            emitStoreInitializedValue(id, literal, token);
+        }
 
         break;
     }
@@ -311,10 +475,27 @@ void Semantico::executeAction(int action, const Token *token) {
 
         MetaData *mt = stManager.returnMetaData(id, currentScope);
         if (mt != nullptr) {
+            if (!pendingArgs.empty()) {
+                if (mt->varType != VariableTypes::FUNCTION) {
+                    pendingArgs.clear();
+                    throw SemanticError("Identificador " + id + " não é uma função.",
+                                        token->getPosition());
+                }
+
+                pendingArgs.clear();
+                SemanticValue returnValue{mt->dataType, "", ValueKind::EXPRESSION};
+                if (inInitContext) {
+                    declLiterals.push(returnValue);
+                } else {
+                    literals.push(returnValue);
+                }
+                break;
+            }
+
             if (inInitContext) {
-                declLiterals.push({mt->dataType, ""});
+                declLiterals.push({mt->dataType, id, ValueKind::VARIABLE});
             } else {
-                literals.push({mt->dataType, ""});
+                literals.push({mt->dataType, id, ValueKind::VARIABLE});
             }
         }
 
@@ -325,7 +506,7 @@ void Semantico::executeAction(int action, const Token *token) {
         isInitialized = true;
         break;
 
-    case DECLARA: {
+    case DECLARACAO: {
         if (!variableTypes.empty() && variableTypes.top() == VariableTypes::PARAMETER) {
             for (int i = 0; i < currFuncParamatersCounter; i++) {
                 if (variableTypes.empty() || variableTypes.top() != VariableTypes::PARAMETER) {
@@ -372,10 +553,10 @@ void Semantico::executeAction(int action, const Token *token) {
                         }
 
                         for (int j = 0; j < arrSize; j++) {
-                            std::pair<DataTypes, std::string> currLiteral = declLiterals.top();
+                            SemanticValue currLiteral = declLiterals.top();
                             declLiterals.pop();
                             CompatibilityResult comp =
-                                checkAssignmentCompatibility(pmt.dataType, currLiteral.first);
+                                checkAssignmentCompatibility(pmt.dataType, currLiteral.dataType);
                             if (comp == CompatibilityResult::Error) {
                                 throw SemanticError("O tipo não é compatível.",
                                                     token->getPosition());
@@ -386,10 +567,10 @@ void Semantico::executeAction(int action, const Token *token) {
                         }
                     } else {
                         if (declLiterals.size() == 1) {
-                            std::pair<DataTypes, std::string> currLiteral = declLiterals.top();
+                            SemanticValue currLiteral = declLiterals.top();
                             declLiterals.pop();
                             CompatibilityResult comp =
-                                checkAssignmentCompatibility(pmt.dataType, currLiteral.first);
+                                checkAssignmentCompatibility(pmt.dataType, currLiteral.dataType);
                             if (comp == CompatibilityResult::Error) {
                                 throw SemanticError("O tipo não é compatível.",
                                                     token->getPosition());
@@ -426,7 +607,7 @@ void Semantico::executeAction(int action, const Token *token) {
         mt.dataType = dataTypes.top();
         dataTypes.pop();
 
-        if (mt.varType == VariableTypes::FUNCTION){
+        if (mt.varType == VariableTypes::FUNCTION) {
             currentReturnType = mt.dataType;
         }
 
@@ -465,26 +646,19 @@ void Semantico::executeAction(int action, const Token *token) {
                         token->getPosition());
                 }
 
-                for (int i = 0; i < groups; i++) {
-                    if (static_cast<int>(declLiterals.size()) < mt.arrSize) {
-                        throw SemanticError("Inicialização do vetor incompleta!",
-                                            token->getPosition());
-                    }
-
-                    for (int j = 0; j < mt.arrSize; j++) {
-                        std::pair<DataTypes, std::string> currLiteral = declLiterals.top();
-                        declLiterals.pop();
-                        CompatibilityResult comp =
-                            checkAssignmentCompatibility(mt.dataType, currLiteral.first);
-                        if (comp == CompatibilityResult::Error) {
-                            throw SemanticError("O tipo não é compatível.", token->getPosition());
-                        }
-                        if (comp == CompatibilityResult::Warn) {
-                            logWarning("Compatibilidade de tipos com aviso.", token);
-                        }
-                    }
+                if (static_cast<int>(declLiterals.size()) < groups * mt.arrSize) {
+                    throw SemanticError("Inicialização do vetor incompleta!", token->getPosition());
                 }
-                if (!declLiterals.empty()) {
+
+                std::vector<SemanticValue> initValues;
+                initValues.reserve(declLiterals.size());
+                while (!declLiterals.empty()) {
+                    initValues.push_back(declLiterals.top());
+                    declLiterals.pop();
+                }
+                std::reverse(initValues.begin(), initValues.end());
+
+                if (static_cast<int>(initValues.size()) > groups * mt.arrSize) {
                     throw SemanticError("Inicialização do vetor excede o tamanho!",
                                         token->getPosition());
                 }
@@ -493,6 +667,29 @@ void Semantico::executeAction(int action, const Token *token) {
                     MetaData vmt = mt;
                     if (isInitialized && i < initCount) {
                         vmt.isInitialized = true;
+                        std::string initialValues;
+                        for (int j = 0; j < mt.arrSize; j++) {
+                            const SemanticValue &initValue =
+                                initValues[static_cast<std::size_t>(i * mt.arrSize + j)];
+                            CompatibilityResult comp =
+                                checkAssignmentCompatibility(vmt.dataType, initValue.dataType);
+                            if (comp == CompatibilityResult::Error) {
+                                throw SemanticError("O tipo não é compatível.",
+                                                    token->getPosition());
+                            }
+                            if (comp == CompatibilityResult::Warn) {
+                                logWarning("Compatibilidade de tipos com aviso.", token);
+                            }
+                            if (initValue.kind != ValueKind::LITERAL) {
+                                throw SemanticError("Inicialização de vetor só suporta literais.",
+                                                    token->getPosition());
+                            }
+                            if (!initialValues.empty()) {
+                                initialValues += ",";
+                            }
+                            initialValues += std::to_string(parseCodegenInteger(initValue, token));
+                        }
+                        vmt.initialValue = initialValues;
                     }
 
                     if (!stManager.insertSymbol(idsOrdered[static_cast<std::size_t>(i)], vmt,
@@ -507,22 +704,35 @@ void Semantico::executeAction(int action, const Token *token) {
                                         token->getPosition());
                 }
 
+                std::vector<SemanticValue> initValues;
+                initValues.reserve(static_cast<std::size_t>(initCount));
+                for (int i = 0; i < initCount; i++) {
+                    if (declLiterals.empty()) {
+                        throw SemanticError("Inicialização inválida!", token->getPosition());
+                    }
+                    initValues.push_back(declLiterals.top());
+                    declLiterals.pop();
+                }
+                std::reverse(initValues.begin(), initValues.end());
+
                 for (int i = 0; i < idCount; i++) {
                     MetaData vmt = mt;
+                    SemanticValue initValue;
+                    bool hasInitValue = isInitialized && i < initCount;
                     if (isInitialized && i < initCount) {
                         vmt.isInitialized = true;
-                        if (!declLiterals.empty()) {
-                            const auto &currLiteral = declLiterals.top();
-                            CompatibilityResult comp =
-                                checkAssignmentCompatibility(vmt.dataType, currLiteral.first);
-                            declLiterals.pop();
-                            if (comp == CompatibilityResult::Error) {
-                                throw SemanticError("O tipo não é compatível.",
-                                                    token->getPosition());
-                            }
-                            if (comp == CompatibilityResult::Warn) {
-                                logWarning("Compatibilidade de tipos com aviso.", token);
-                            }
+                        initValue = initValues[static_cast<std::size_t>(i)];
+                        CompatibilityResult comp =
+                            checkAssignmentCompatibility(vmt.dataType, initValue.dataType);
+                        if (comp == CompatibilityResult::Error) {
+                            throw SemanticError("O tipo não é compatível.", token->getPosition());
+                        }
+                        if (comp == CompatibilityResult::Warn) {
+                            logWarning("Compatibilidade de tipos com aviso.", token);
+                        }
+                        if (initValue.kind == ValueKind::LITERAL) {
+                            vmt.initialValue =
+                                std::to_string(parseCodegenInteger(initValue, token));
                         }
                     }
 
@@ -530,6 +740,11 @@ void Semantico::executeAction(int action, const Token *token) {
                                                 currentScope)) {
                         throw SemanticError("Variável já declarada no escopo!",
                                             token->getPosition());
+                    }
+
+                    if (hasInitValue && initValue.kind != ValueKind::LITERAL) {
+                        emitStoreInitializedValue(idsOrdered[static_cast<std::size_t>(i)],
+                                                  initValue, token);
                     }
                 }
 
@@ -553,10 +768,10 @@ void Semantico::executeAction(int action, const Token *token) {
                 }
 
                 for (int i = 0; i < arrSize; i++) {
-                    std::pair<DataTypes, std::string> currLiteral = literals.top();
+                    SemanticValue currLiteral = literals.top();
                     literals.pop();
                     CompatibilityResult comp =
-                        checkAssignmentCompatibility(mt.dataType, currLiteral.first);
+                        checkAssignmentCompatibility(mt.dataType, currLiteral.dataType);
                     if (comp == CompatibilityResult::Error) {
                         throw SemanticError("O tipo não é compatível.", token->getPosition());
                     }
@@ -567,10 +782,10 @@ void Semantico::executeAction(int action, const Token *token) {
 
             } else if (mt.varType == VariableTypes::SCALAR) {
                 if (literals.size() == 1) {
-                    std::pair<DataTypes, std::string> currLiteral = literals.top();
+                    SemanticValue currLiteral = literals.top();
                     literals.pop();
                     CompatibilityResult comp =
-                        checkAssignmentCompatibility(mt.dataType, currLiteral.first);
+                        checkAssignmentCompatibility(mt.dataType, currLiteral.dataType);
                     if (comp == CompatibilityResult::Error) {
                         throw SemanticError("O tipo não é compatível.", token->getPosition());
                     }
@@ -629,16 +844,16 @@ void Semantico::executeAction(int action, const Token *token) {
             throw SemanticError("Tamanho do vetor inválido!", token->getPosition());
         }
 
-        std::pair<DataTypes, std::string> sizeLiteral = literals.top();
+        SemanticValue sizeLiteral = literals.top();
         literals.pop();
 
-        if (sizeLiteral.first != DataTypes::INT) {
+        if (sizeLiteral.dataType != DataTypes::INT) {
             throw SemanticError("Tamanho do vetor deve ser inteiro!", token->getPosition());
         }
 
         int size = 0;
         try {
-            size = std::stoi(sizeLiteral.second);
+            size = parseCodegenInteger(sizeLiteral, token);
         } catch (const std::exception &) {
             throw SemanticError("Tamanho do vetor inválido!", token->getPosition());
         }
@@ -691,18 +906,20 @@ void Semantico::executeAction(int action, const Token *token) {
         inInitContext = false;
         break;
 
-    case AVALIA_EXPRESSAO: {
-        auto right = literals.top();
-        literals.pop();
+    case EXPRESSAO: {
+        std::stack<SemanticValue> &expressionValues = inInitContext ? declLiterals : literals;
 
-        auto left = literals.top();
-        literals.pop();
+        auto right = expressionValues.top();
+        expressionValues.pop();
+
+        auto left = expressionValues.top();
+        expressionValues.pop();
 
         Operators op = operators.top();
         operators.pop();
 
-        auto leftType = left.first;
-        auto rightType = right.first;
+        auto leftType = left.dataType;
+        auto rightType = right.dataType;
 
         switch (op) {
 
@@ -711,21 +928,31 @@ void Semantico::executeAction(int action, const Token *token) {
             // string + anything
             if (leftType == DataTypes::STRING || rightType == DataTypes::STRING) {
 
-                literals.push({DataTypes::STRING, ""});
+                expressionValues.push({DataTypes::STRING, "", ValueKind::EXPRESSION});
                 break;
             }
 
             // char + string
             if (leftType == DataTypes::CHAR && rightType == DataTypes::STRING) {
 
-                literals.push({DataTypes::STRING, ""});
+                expressionValues.push({DataTypes::STRING, "", ValueKind::EXPRESSION});
                 break;
             }
 
+            // NOTE
+            // Uńico tipo que o BipOS aceita para operação
             // int + int
             if (leftType == DataTypes::INT && rightType == DataTypes::INT) {
 
-                literals.push({DataTypes::INT, ""});
+                if (!expressionValues.empty()) {
+                    materializeAccumulator(expressionValues.top());
+                }
+                materializeAccumulator(right);
+                emitLoadValue(left, token);
+                emitApplyOperator(op, right, token);
+                freeExpressionTemp(left);
+                freeExpressionTemp(right);
+                expressionValues.push({DataTypes::INT, "", ValueKind::ACCUMULATOR});
                 break;
             }
 
@@ -740,27 +967,69 @@ void Semantico::executeAction(int action, const Token *token) {
                     logWarning("Perda de precisão.", token);
                 }
 
-                literals.push({DataTypes::FLOAT, ""});
+                expressionValues.push({DataTypes::FLOAT, "", ValueKind::EXPRESSION});
                 break;
             }
 
             // char + char
             if (leftType == DataTypes::CHAR && rightType == DataTypes::CHAR) {
-                literals.push({DataTypes::CHAR, ""});
+                expressionValues.push({DataTypes::CHAR, "", ValueKind::EXPRESSION});
                 break;
             }
 
             // char + int
             if (leftType == DataTypes::CHAR && rightType == DataTypes::INT) {
                 logWarning("Considerando apenas o primeiro dígito", token);
-                literals.push({DataTypes::CHAR, ""});
+                expressionValues.push({DataTypes::CHAR, "", ValueKind::EXPRESSION});
                 break;
             }
 
             throw SemanticError("Tipos incompatíveis para SUM");
         }
 
-        case Operators::SUB:
+        case Operators::SUB: {
+            if (leftType == DataTypes::INT && rightType == DataTypes::INT) {
+                if (!expressionValues.empty()) {
+                    materializeAccumulator(expressionValues.top());
+                }
+                materializeAccumulator(right);
+                emitLoadValue(left, token);
+                emitApplyOperator(op, right, token);
+                freeExpressionTemp(left);
+                freeExpressionTemp(right);
+                expressionValues.push({DataTypes::INT, "", ValueKind::ACCUMULATOR});
+                break;
+            }
+
+            if (leftType == DataTypes::STRING || rightType == DataTypes::STRING) {
+                throw SemanticError("Tipo STRING inválido nessa operação");
+            }
+
+            if ((leftType == DataTypes::CHAR && rightType == DataTypes::FLOAT) ||
+                (leftType == DataTypes::FLOAT && rightType == DataTypes::CHAR)) {
+                throw SemanticError("CHAR incompatível com FLOAT");
+            }
+
+            if ((leftType == DataTypes::CHAR && rightType == DataTypes::INT) ||
+                (leftType == DataTypes::INT && rightType == DataTypes::CHAR)) {
+                throw SemanticError("CHAR incompatível com INT");
+            }
+
+            if (leftType == DataTypes::CHAR && rightType == DataTypes::CHAR) {
+                expressionValues.push({DataTypes::CHAR, "", ValueKind::EXPRESSION});
+                break;
+            }
+
+            if ((leftType == DataTypes::FLOAT && rightType == DataTypes::FLOAT) ||
+                (leftType == DataTypes::FLOAT && rightType == DataTypes::INT) ||
+                (leftType == DataTypes::INT && rightType == DataTypes::FLOAT)) {
+                expressionValues.push({DataTypes::FLOAT, "", ValueKind::EXPRESSION});
+                break;
+            }
+
+            throw SemanticError("Tipos incompatíveis");
+        }
+
         case Operators::MUL:
         case Operators::DIV: {
 
@@ -788,13 +1057,13 @@ void Semantico::executeAction(int action, const Token *token) {
 
             // char char
             if (leftType == DataTypes::CHAR && rightType == DataTypes::CHAR) {
-                literals.push({DataTypes::CHAR, ""});
+                expressionValues.push({DataTypes::CHAR, "", ValueKind::EXPRESSION});
                 break;
             }
 
             // int int
             if (leftType == DataTypes::INT && rightType == DataTypes::INT) {
-                literals.push({DataTypes::INT, ""});
+                expressionValues.push({DataTypes::INT, "", ValueKind::EXPRESSION});
                 break;
             }
 
@@ -802,7 +1071,7 @@ void Semantico::executeAction(int action, const Token *token) {
             if ((leftType == DataTypes::FLOAT && rightType == DataTypes::FLOAT) ||
                 (leftType == DataTypes::FLOAT && rightType == DataTypes::INT) ||
                 (leftType == DataTypes::INT && rightType == DataTypes::FLOAT)) {
-                literals.push({DataTypes::FLOAT, ""});
+                expressionValues.push({DataTypes::FLOAT, "", ValueKind::EXPRESSION});
                 break;
             }
 
@@ -817,7 +1086,7 @@ void Semantico::executeAction(int action, const Token *token) {
                 throw SemanticError("AND/OR requer BOOLEAN");
             }
 
-            literals.push({DataTypes::BOOLEAN, ""});
+            expressionValues.push({DataTypes::BOOLEAN, "", ValueKind::EXPRESSION});
             break;
         }
 
@@ -827,7 +1096,7 @@ void Semantico::executeAction(int action, const Token *token) {
                 throw SemanticError("NOT requer BOOLEAN");
             }
 
-            literals.push({DataTypes::BOOLEAN, ""});
+            expressionValues.push({DataTypes::BOOLEAN, "", ValueKind::EXPRESSION});
             break;
         }
         }
@@ -842,11 +1111,194 @@ void Semantico::executeAction(int action, const Token *token) {
     case AVALIA_RETORNO: {
         auto returnType = literals.top();
         literals.pop();
-        if(currentReturnType != returnType.first){
+        if (currentReturnType != returnType.dataType) {
             throw SemanticError("Tipo do retorno é incompatível com o tipo da função.");
         }
         break;
+    }
 
+    case INPUT: {
+        for (const SemanticValue &sv : inputSemanticValues) {
+            codeGenerator.load("$in_port");
+            if (sv.kind == ValueKind::VECTOR_ACCESS) {
+                codeGenerator.storeVector(sv.lexeme);
+            } else {
+                codeGenerator.store(sv.lexeme);
+            }
+            codeGenerator.newLine();
+        }
+        inputSemanticValues.clear();
+        currentIoContext = IoContext::NONE;
+        break;
+    }
+
+    case OUTPUT: {
+        for (const SemanticValue &sv : outputSemanticValues) {
+            if (sv.kind == ValueKind::VECTOR_ACCESS) {
+                MetaData *meta = stManager.returnMetaData(sv.lexeme, currentScope);
+                if (meta != nullptr && meta->arrSize == 1) {
+                    codeGenerator.load(sv.lexeme);
+                } else {
+                    codeGenerator.loadVector(sv.lexeme);
+                }
+            } else {
+                emitLoadValue(sv, token);
+            }
+            codeGenerator.store("$out_port");
+            codeGenerator.newLine();
+        }
+        outputSemanticValues.clear();
+        currentIoContext = IoContext::NONE;
+        break;
+    }
+
+    case GUARDA_ID_INPUT: {
+        std::string id = token->getLexeme();
+        MetaData *idMetaData = stManager.returnMetaData(id, currentScope);
+        if (idMetaData == nullptr) {
+            throw SemanticError("Variável " + id + " não foi declarada.");
+        }
+
+        currentIoContext = IoContext::INPUT_COMMAND;
+        inputSemanticValues.push_back({idMetaData->dataType, id, ValueKind::VARIABLE});
+        break;
+    }
+
+    case GUARDA_ID_OUTPUT: {
+        std::string id = token->getLexeme();
+        MetaData *idMetaData = stManager.returnMetaData(id, currentScope);
+        if (idMetaData == nullptr) {
+            throw SemanticError("Variável " + id + " não foi declarada.");
+        }
+
+        currentIoContext = IoContext::OUTPUT_COMMAND;
+        SemanticValue sv;
+        sv.dataType = idMetaData->dataType;
+        sv.kind = ValueKind::VARIABLE;
+        sv.lexeme = id;
+        outputSemanticValues.push_back(sv);
+        break;
+    }
+
+    case GUARDA_LITERAL_OUTPUT: {
+        std::string value = token->getLexeme();
+        DataTypes dtype = dataTypeFromToken(token->getId());
+        if (dtype != DataTypes::INT) {
+            throw SemanticError("O operador de output só tem suporte para tipo INTEIRO.");
+        }
+
+        SemanticValue sv;
+        sv.dataType = dtype;
+        sv.kind = ValueKind::LITERAL;
+        sv.lexeme = value;
+        outputSemanticValues.push_back(sv);
+        break;
+    }
+
+    case IO_TIPO_VETOR: {
+        SemanticValue *value = nullptr;
+        if (currentIoContext == IoContext::INPUT_COMMAND && !inputSemanticValues.empty()) {
+            value = &inputSemanticValues.back();
+        } else if (currentIoContext == IoContext::OUTPUT_COMMAND && !outputSemanticValues.empty()) {
+            value = &outputSemanticValues.back();
+        }
+
+        if (value == nullptr) {
+            throw SemanticError("Acesso inválido a vetor.", token->getPosition());
+        }
+
+        MetaData *meta = stManager.returnMetaData(value->lexeme, currentScope);
+        if (meta == nullptr || meta->varType != VariableTypes::ARRAY) {
+            throw SemanticError("Identificador não é um vetor.", token->getPosition());
+        }
+
+        value->kind = ValueKind::VECTOR_ACCESS;
+        break;
+    }
+
+    case IO_INDICE_VETOR: {
+        if (literals.empty()) {
+            throw SemanticError("Índice de vetor inválido.", token->getPosition());
+        }
+
+        SemanticValue index = literals.top();
+        literals.pop();
+        if (index.dataType != DataTypes::INT) {
+            throw SemanticError("Índice de vetor deve ser inteiro.", token->getPosition());
+        }
+
+        emitLoadValue(index, token);
+        codeGenerator.store("$indr");
+        freeExpressionTemp(index);
+        break;
+    }
+
+    case PREPARA_INDICE_EXP_VETOR: {
+        std::stack<SemanticValue> &expressionValues = inInitContext ? declLiterals : literals;
+        if (!expressionValues.empty()) {
+            materializeAccumulator(expressionValues.top());
+        }
+        break;
+    }
+
+    case ACESSO_EXP_VETOR: {
+        std::stack<SemanticValue> &expressionValues = inInitContext ? declLiterals : literals;
+        if (ids.empty() || expressionValues.empty()) {
+            throw SemanticError("Acesso inválido a vetor.", token->getPosition());
+        }
+
+        std::string id = ids.top();
+        ids.pop();
+        MetaData *meta = stManager.returnMetaData(id, currentScope);
+        if (meta == nullptr || meta->varType != VariableTypes::ARRAY) {
+            throw SemanticError("Identificador não é um vetor.", token->getPosition());
+        }
+        stManager.useSymbol(id, currentScope);
+
+        SemanticValue index = expressionValues.top();
+        expressionValues.pop();
+        if (index.dataType != DataTypes::INT) {
+            throw SemanticError("Índice de vetor deve ser inteiro.", token->getPosition());
+        }
+
+        emitLoadValue(index, token);
+        codeGenerator.store("$indr");
+        freeExpressionTemp(index);
+        if (meta->arrSize == 1) {
+            codeGenerator.load(id);
+        } else {
+            codeGenerator.loadVector(id);
+        }
+        expressionValues.push({meta->dataType, "", ValueKind::ACCUMULATOR});
+        break;
+    }
+
+    case INDICE_ATRIBUICAO_VETOR: {
+        if (ids.empty() || literals.empty()) {
+            throw SemanticError("Atribuição inválida em vetor.", token->getPosition());
+        }
+
+        MetaData *meta = stManager.returnMetaData(ids.top(), currentScope);
+        if (meta == nullptr || meta->varType != VariableTypes::ARRAY) {
+            throw SemanticError("Identificador não é um vetor.", token->getPosition());
+        }
+
+        SemanticValue index = literals.top();
+        literals.pop();
+        if (index.dataType != DataTypes::INT) {
+            throw SemanticError("Índice de vetor deve ser inteiro.", token->getPosition());
+        }
+
+        emitLoadValue(index, token);
+        pendingVectorAssignmentIndexTemp = codeGenerator.getFreeTemp();
+        if (pendingVectorAssignmentIndexTemp.empty()) {
+            throw SemanticError("Não há temporários livres para avaliar a atribuição.",
+                                token->getPosition());
+        }
+        codeGenerator.store(pendingVectorAssignmentIndexTemp);
+        freeExpressionTemp(index);
+        hasPendingVectorAssignment = true;
+        break;
     }
 
     default:

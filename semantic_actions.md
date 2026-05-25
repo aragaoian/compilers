@@ -21,6 +21,16 @@
 | #19 | contador de inicializadores |
 | #20 | inicio de inicialização |
 | #21 | fim de inicialização |
-| #22 | avalia expressão |
+| #22 | expressão |
 | #23 | operador |
 | #24 | avalia retorno |
+| #25 | input |
+| #26 | output |
+| #27 | id input |
+| #28 | id output |
+| #29 | literal output |
+| #30 | tipo vetor IO |
+| #31 | indice vetor IO |
+| #32 | prepara indice de vetor em expressão |
+| #33 | acesso a vetor em expressão |
+| #34 | indice de vetor no lado esquerdo da atribuição |

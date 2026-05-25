@@ -50,3 +50,7 @@ ide/.qmake.stash
 # Tests files
 test.cpp
 tests.cpp
+
+# Agents
+.codex/
+.agents/
