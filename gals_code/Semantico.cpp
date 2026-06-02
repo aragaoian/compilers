@@ -6,8 +6,8 @@
 #include <stdexcept>
 
 /*TODO
-1. Escopo vazando com 2 ifs
-2. lixo de memoria e.g a = a + 1;
+1. Escopo vazando com 2 ifs []
+2. lixo de memoria e.g a = a + 1; []
 */
 
 #define GUARDA_ID 1
@@ -331,8 +331,8 @@ void Semantico::logWarning(const std::string &message, const Token *token) {
 }
 
 void Semantico::executeAction(int action, const Token *token) {
-    std::cout << "Ação: " << action << ", Token: " << token->getId()
-              << ", Lexema: " << token->getLexeme() << std::endl;
+    // std::cout << "Ação: " << action << ", Token: " << token->getId()
+    //           << ", Lexema: " << token->getLexeme() << std::endl;
 
     switch (action) {
     case GUARDA_ID:
@@ -920,6 +920,22 @@ void Semantico::executeAction(int action, const Token *token) {
         auto left = expressionValues.top();
         expressionValues.pop();
 
+        if(right.kind == ValueKind::VARIABLE){
+            MetaData *rightMetadata = stManager.returnMetaData(right.lexeme, currentScope);
+            if(!rightMetadata->isInitialized){
+                std::string formatted = "[AVISO] " + right.lexeme + " não foi inicializado(a), usando lixo de memória.";
+                messages.push_back(formatted);
+            }
+        }
+
+        if(left.kind == ValueKind::VARIABLE){
+            MetaData *leftMetadata = stManager.returnMetaData(left.lexeme, currentScope);
+            if(!leftMetadata->isInitialized){
+                std::string formatted = "[AVISO] " + left.lexeme + " não foi inicializado(a), usando lixo de memória.";
+                messages.push_back(formatted);
+            }
+        }
+        
         Operators op = operators.top();
         operators.pop();
 
