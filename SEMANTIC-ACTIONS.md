@@ -34,6 +34,7 @@
 | #32 | prepara indice de vetor em expressão |
 | #33 | acesso a vetor em expressão |
 | #34 | indice de vetor no lado esquerdo da atribuição |
-| #35 | inicializar if |
-| #36 | iniciar else |
-| #37 | avaliar condição if else (resultado da expressão precisa ser BOOL)|
+| #35 | inicializar if e avaliar condição if else (resultado da expressão precisa ser BOOL) |
+| #36 | inicializar else |
+| #37 | flagar sem else |
+| #38 | finalizar if (branch) |

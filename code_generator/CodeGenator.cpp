@@ -1,4 +1,5 @@
 #include "CodeGenator.h"
+#include "../enums/Operators.h"
 #include <string>
 
 CodeGenerator::CodeGenerator() = default;
@@ -60,6 +61,31 @@ void CodeGenerator::freeTemp(const std::string &temp) {
     if (it != tempPointers.end()) {
         it->second = false;
     }
+}
+
+void CodeGenerator::label(std::string l){
+    text.push_back(l + ":");
+}
+
+void CodeGenerator::branching(Operators op, std::string label) {
+    std::string instruction;
+    if (Operators::GREATER == op){
+        instruction = "BLE";
+    }else if (Operators::GREATER_EQ == op){
+        instruction = "BLT";
+    }else if (Operators::LESSER == op){
+        instruction = "BGE";
+    }else if (Operators::LESSER_EQ == op){
+        instruction = "BGT";
+    }else if (Operators::EQUAL == op){
+        instruction = "BNE";
+    }else if (Operators::DIFFERENT == op){
+        instruction = "BEQ";
+    }else {
+        instruction = "JMP";
+    }
+
+    text.push_back(instruction + " " + label);
 }
 
 std::string CodeGenerator::generate() {
