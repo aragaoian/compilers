@@ -1,6 +1,7 @@
 #ifndef SEMANTICO_H
 #define SEMANTICO_H
 
+#include "../enums/Operators.h"
 #include "../code_generator/CodeGenator.h"
 #include "../symbols_table/SymbolsTableManager.h"
 #include "SemanticError.h"
@@ -9,8 +10,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-enum class Operators { SUM, SUB, MUL, DIV, OR, AND, NOT };
 
 enum class ValueKind { LITERAL, VARIABLE, EXPRESSION, ACCUMULATOR, VECTOR_ACCESS };
 
@@ -82,6 +81,11 @@ class Semantico {
     std::vector<SemanticValue> pendingArgs;
 
     std::stack<Operators> operators;
+
+    int conditionalCounter = 0;
+    std::stack<Operators> conditionsOperator;
+    std::stack<int> ifController;
+    std::stack<bool> elseController;
 };
 
 #endif

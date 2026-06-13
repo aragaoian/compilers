@@ -1,4 +1,5 @@
 #include "SymbolsTableManager.h"
+#include "../enums/Operators.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -6,43 +7,6 @@
 const std::string TEMP1 = "1000";
 const std::string TEMP2 = "1001";
 const std::string TEMP3 = "1002";
-
-enum class BipInstruction {
-    // Transferência e Memória
-    STO,
-    LD,
-    LDI,
-    // Vetores
-    LDV,
-    STOV,
-    // Aritmética
-    ADD,
-    ADDI,
-    SUB,
-    SUBI,
-    // Controle
-    HLT,
-    CALL,
-    RETURN,
-    // Desvio
-    BEQ,
-    BNE,
-    BGT,
-    BGE,
-    BLT,
-    BLE,
-    JMP,
-    // Lógica
-    AND,
-    ANDI,
-    OR,
-    ORI,
-    NOT,
-    SLL,
-    SRL
-};
-
-enum class BipSpecialRegister { IN_PORT, OUT_PORT, INDR };
 
 class CodeGenerator {
   private:
@@ -76,4 +40,7 @@ class CodeGenerator {
     void addi(int value);
     void sub(std::string var);
     void subi(int value);
+
+    void label(std::string l);
+    void branching(Operators op, std::string label);
 };

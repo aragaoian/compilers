@@ -1,10 +1,12 @@
 # Requisitos V2
 
-1. (1 ponto) Suporte a operações relacionais []
+1. (1 ponto) Suporte a operações relacionais
+    - suporte a variáveis e constantes [X]
+    - suporte a vetores []
 
-2. (1 ponto) Desvio condicional simples (sem else) []
+2. (1 ponto) Desvio condicional simples (sem else) [X]
 
-3. (1,5 ponto) Desvio condicional composto (com else) []
+3. (1,5 ponto) Desvio condicional composto (com else) [X]
 
 4. (1 ponto) Laço de repetição com teste lógico no inicio (while) []
 
