@@ -1,7 +1,8 @@
 # Tests para BipOS v2
 
-1. Testes com operador relacional e condicional
+## 1. Testes com operador relacional e condicional
 
+### 1.1 Condicional if e else + constantes + variáveis
 ```
 si(1 < 2){
 	let a: ent;
@@ -53,4 +54,19 @@ si(1 < 2){
 
 	end_condition_1:
 	end_condition_0:
+```
+
+### 1.2 Condicional simples + constantes + variáveis + vetor
+
+```
+let a: [1]ent = {1};
+let b: [1]ent = {2};
+
+si(a[0] < 2){}
+si(1 < b[0]){}
+si(a[0] < b[0]){}
+```
+
+```
+AINDA NÃO FOI GERADO
 ```

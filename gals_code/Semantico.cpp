@@ -1142,6 +1142,9 @@ void Semantico::executeAction(int action, const Token *token) {
         case Operators::LESSER_EQ:
         case Operators::EQUAL:
         case Operators::DIFFERENT:{
+            // if (left.kind == ValueKind::VECTOR_ACCESS);
+            // if (right.kind == ValueKind::VECTOR_ACCESS);
+
             emitLoadValue(left, token);
             std::string leftTemp = codeGenerator.getFreeTemp();
             codeGenerator.store(leftTemp);
