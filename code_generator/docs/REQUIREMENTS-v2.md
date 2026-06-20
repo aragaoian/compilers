@@ -2,7 +2,7 @@
 
 1. (1 ponto) Suporte a operações relacionais
     - suporte a variáveis e constantes [X]
-    - suporte a vetores []
+    - suporte a vetores [X]
 
 2. (1 ponto) Desvio condicional simples (sem else) [X]
 

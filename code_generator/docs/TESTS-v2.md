@@ -68,5 +68,51 @@ si(a[0] < b[0]){}
 ```
 
 ```
-AINDA NÃO FOI GERADO
+.data
+	a: 1
+	b: 2
+
+.text
+	LDI 0
+	STO $indr
+	LD a
+	STO 1000
+	LDI 2
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE else_0
+
+	else_0:
+	LDI 0
+	STO $indr
+	LD b
+	STO 1000
+	LDI 1
+	STO 1001
+	LD 1001
+	SUB 1000
+	BGE else_1
+
+	else_1:
+	LDI 0
+	STO $indr
+	LD a
+	STO 1000
+	LDI 0
+	STO $indr
+	LD b
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE else_2
+
+	else_2:
+```
+
+```
+let i: ent = 0;
+let v: [5]ent = {1, 2, 3, 4, 5};
+
+si(v[i + 1] < v[i + 7]){}
 ```

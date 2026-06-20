@@ -1142,29 +1142,40 @@ void Semantico::executeAction(int action, const Token *token) {
         case Operators::LESSER_EQ:
         case Operators::EQUAL:
         case Operators::DIFFERENT:{
-            // if (left.kind == ValueKind::VECTOR_ACCESS);
-            // if (right.kind == ValueKind::VECTOR_ACCESS);
+            if (right.kind == ValueKind::ACCUMULATOR) {
+                materializeAccumulator(right);
+            } else {
+                materializeAccumulator(left);
+            }
 
-            emitLoadValue(left, token);
-            std::string leftTemp = codeGenerator.getFreeTemp();
-            codeGenerator.store(leftTemp);
-            emitLoadValue(right, token);
-            std::string rightTemp = codeGenerator.getFreeTemp();
-            codeGenerator.store(rightTemp);
+            auto materializeOperand = [&](SemanticValue &value) {
+                if (value.kind == ValueKind::EXPRESSION) {
+                    return;
+                }
 
-            SemanticValue leftSemanticValue = SemanticValue{
-                left.dataType, 
-                leftTemp, 
-                ValueKind::VARIABLE
+                std::string temp = codeGenerator.getFreeTemp();
+                if (temp.empty()) {
+                    throw SemanticError("Não há temporários livres para avaliar a condição.",
+                                        token->getPosition());
+                }
+                emitLoadValue(value, token);
+                codeGenerator.store(temp);
+                value.lexeme = temp;
+                value.kind = ValueKind::EXPRESSION;
             };
-            emitLoadValue(leftSemanticValue, token);
-            codeGenerator.sub(rightTemp);
+
+            materializeOperand(left);
+            materializeOperand(right);
+
+            codeGenerator.load(left.lexeme);
+            codeGenerator.sub(right.lexeme);
 
             conditionsOperator.push(op);
-            expressionValues.push({DataTypes::BOOLEAN, "", ValueKind::EXPRESSION});
+            expressionValues.push({DataTypes::BOOLEAN, "", ValueKind::ACCUMULATOR});
 
-            codeGenerator.freeTemp(leftTemp);
-            codeGenerator.freeTemp(rightTemp);
+            freeExpressionTemp(left);
+            freeExpressionTemp(right);
+            break;
         }
 
         }
@@ -1337,7 +1348,14 @@ void Semantico::executeAction(int action, const Token *token) {
         } else {
             codeGenerator.loadVector(id);
         }
-        expressionValues.push({meta->dataType, "", ValueKind::ACCUMULATOR});
+
+        std::string valueTemp = codeGenerator.getFreeTemp();
+        if (valueTemp.empty()) {
+            throw SemanticError("Não há temporários livres para acessar o vetor.",
+                                token->getPosition());
+        }
+        codeGenerator.store(valueTemp);
+        expressionValues.push({meta->dataType, valueTemp, ValueKind::EXPRESSION});
         break;
     }
 
