@@ -14,7 +14,5 @@
 
 6. (2,5 ponto) Laço de repetição com variável de controle (for) []
 
-7. (2,5 ponto) Laço de repetição com variável de controle (for) []
-
-8. (2 pontos) Suporte para aninhamentos (ex: laço dentro de laço, desvio
-dentro de laço, etc...); []
+7. (2 pontos) Suporte para aninhamentos (ex: laço dentro de laço, desvio
+dentro de laço, etc...) []

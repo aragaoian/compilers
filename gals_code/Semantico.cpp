@@ -1148,6 +1148,13 @@ void Semantico::executeAction(int action, const Token *token) {
                 materializeAccumulator(left);
             }
 
+            /*
+                NOTE
+                Armazenar o temp no valor da struct SemanticValue,
+                para que possa ter melhor controle na resolução das operações relacionais
+                e evitar problemas como: v[0] < 2, onde v[0] é armazenado no temp0 (liberando
+                o temp0 depois da resolver o index) e a constante também é guardada no temp0.
+            */
             auto materializeOperand = [&](SemanticValue &value) {
                 if (value.kind == ValueKind::EXPRESSION) {
                     return;
