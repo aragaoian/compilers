@@ -1,14 +1,9 @@
 #include "Semantico.h"
 #include "Constants.h"
-
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
-/*TODO
-1. Escopo vazando com 2 ifs []
-2. lixo de memoria e.g a = a + 1; [X]
-*/
 
 #define GUARDA_ID 1
 #define GUARDA_TIPO_DADO 2
@@ -44,6 +39,10 @@
 #define PREPARA_INDICE_EXP_VETOR 32
 #define ACESSO_EXP_VETOR 33
 #define INDICE_ATRIBUICAO_VETOR 34
+#define INICIA_IF_AVALIA_CONDICAO 35
+#define INICIA_ELSE 36
+#define FLAG_SEM_ELSE 37
+#define FINALIZA_IF 38
 
 static std::string varTypeEnumToString(VariableTypes varType) {
     switch (varType) {
@@ -78,6 +77,18 @@ static Operators operatorFromToken(TokenId tokenId) {
         return Operators::OR;
     case t_NOT:
         return Operators::NOT;
+    case t_GREATER:
+        return Operators::GREATER;
+    case t_GREATER_EQ:
+        return Operators::GREATER_EQ;
+    case t_LESSER:
+        return Operators::LESSER;
+    case t_LESSER_EQ:
+        return Operators::LESSER_EQ;
+    case t_EQUAL_CONDITION:
+        return Operators::EQUAL;
+    case t_DIFFERENT_CONDITION:
+        return Operators::DIFFERENT;
     default:
         return Operators::SUM;
     }
@@ -331,8 +342,8 @@ void Semantico::logWarning(const std::string &message, const Token *token) {
 }
 
 void Semantico::executeAction(int action, const Token *token) {
-    // std::cout << "Ação: " << action << ", Token: " << token->getId()
-    //           << ", Lexema: " << token->getLexeme() << std::endl;
+    std::cout << "Ação: " << action << ", Token: " << token->getId()
+              << ", Lexema: " << token->getLexeme() << std::endl;
 
     switch (action) {
     case GUARDA_ID:
@@ -1124,6 +1135,56 @@ void Semantico::executeAction(int action, const Token *token) {
             expressionValues.push({DataTypes::BOOLEAN, "", ValueKind::EXPRESSION});
             break;
         }
+
+        case Operators::GREATER: 
+        case Operators::GREATER_EQ:
+        case Operators::LESSER:
+        case Operators::LESSER_EQ:
+        case Operators::EQUAL:
+        case Operators::DIFFERENT:{
+            if (right.kind == ValueKind::ACCUMULATOR) {
+                materializeAccumulator(right);
+            } else {
+                materializeAccumulator(left);
+            }
+
+            /*
+                NOTE
+                Armazenar o temp no valor da struct SemanticValue,
+                para que possa ter melhor controle na resolução das operações relacionais
+                e evitar problemas como: v[0] < 2, onde v[0] é armazenado no temp0 (liberando
+                o temp0 depois da resolver o index) e a constante também é guardada no temp0.
+            */
+            auto materializeOperand = [&](SemanticValue &value) {
+                if (value.kind == ValueKind::EXPRESSION) {
+                    return;
+                }
+
+                std::string temp = codeGenerator.getFreeTemp();
+                if (temp.empty()) {
+                    throw SemanticError("Não há temporários livres para avaliar a condição.",
+                                        token->getPosition());
+                }
+                emitLoadValue(value, token);
+                codeGenerator.store(temp);
+                value.lexeme = temp;
+                value.kind = ValueKind::EXPRESSION;
+            };
+
+            materializeOperand(left);
+            materializeOperand(right);
+
+            codeGenerator.load(left.lexeme);
+            codeGenerator.sub(right.lexeme);
+
+            conditionsOperator.push(op);
+            expressionValues.push({DataTypes::BOOLEAN, "", ValueKind::ACCUMULATOR});
+
+            freeExpressionTemp(left);
+            freeExpressionTemp(right);
+            break;
+        }
+
         }
 
         break;
@@ -1294,7 +1355,14 @@ void Semantico::executeAction(int action, const Token *token) {
         } else {
             codeGenerator.loadVector(id);
         }
-        expressionValues.push({meta->dataType, "", ValueKind::ACCUMULATOR});
+
+        std::string valueTemp = codeGenerator.getFreeTemp();
+        if (valueTemp.empty()) {
+            throw SemanticError("Não há temporários livres para acessar o vetor.",
+                                token->getPosition());
+        }
+        codeGenerator.store(valueTemp);
+        expressionValues.push({meta->dataType, valueTemp, ValueKind::EXPRESSION});
         break;
     }
 
@@ -1323,6 +1391,67 @@ void Semantico::executeAction(int action, const Token *token) {
         codeGenerator.store(pendingVectorAssignmentIndexTemp);
         freeExpressionTemp(index);
         hasPendingVectorAssignment = true;
+        break;
+    }
+
+    case INICIA_IF_AVALIA_CONDICAO: {
+        /*
+            *NOTE*
+            Não depende de um contexto de init (usar o stack de literals)
+            pois já estamos assumindo que a condição não está em um declaração
+            e sim em uma "atribuição".
+        */
+
+        SemanticValue condition = literals.top();
+        literals.pop();
+
+        if(condition.dataType != DataTypes::BOOLEAN){
+            throw SemanticError("O resultado da condição não é booleano!", token->getPosition());
+        }
+
+        Operators op = conditionsOperator.top();
+        conditionsOperator.pop();
+        codeGenerator.branching(op, "else_" + std::to_string(conditionalCounter));
+
+        ifController.push(conditionalCounter);
+        conditionalCounter++;
+        codeGenerator.newLine();
+        break;
+    }
+
+    case FINALIZA_IF: {
+        int id = ifController.top();
+        ifController.pop();
+
+        bool hasElseClause = false;
+        if (!elseController.empty()){
+            hasElseClause = elseController.top();
+            elseController.pop();
+        }
+
+        if(hasElseClause){
+            codeGenerator.label("end_condition_" + std::to_string(id));
+        }else{
+            codeGenerator.label("else_" + std::to_string(id));
+        }
+
+        break;
+    }
+
+    case INICIA_ELSE: {
+        elseController.push(true);
+        int id = ifController.top();
+
+        // NOTE
+        // O operador pouco importa, só não pode existir na lista
+        // para consequentemente cair no case default.
+        codeGenerator.branching(Operators::NOT, "end_condition_" + std::to_string(id));
+        codeGenerator.label("else_" + std::to_string(id));
+        break;
+    }
+
+    case FLAG_SEM_ELSE: {
+        elseController.push(false);
         break;
     }
 

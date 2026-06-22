@@ -115,7 +115,6 @@ NOT = ID: "pas"
 <tipo_dado>
 <tipo_variavel>
 <dimensoes>
-<acesso_lvalue>
 <condicao>
 <comando>
 <comando_id>
@@ -139,6 +138,7 @@ NOT = ID: "pas"
 <exp3>
 <exp4>
 <exp5>
+<exp5_linha>
 <exp6>
 <exp7>
 <exp7_linha>
@@ -156,6 +156,7 @@ NOT = ID: "pas"
 <exponential>
 <atribuicao>
 <lvalue>
+<acesso_lvalue>
 <rvalue>
 <tipo_atribuicao>
 <entrada>
@@ -179,7 +180,6 @@ NOT = ID: "pas"
 <do_while>
 <condicional>
 <resto_if>
-<tipo_else>
 <subrotina>
 <tipo_subrotina>
 <bloco_opcional>
@@ -266,7 +266,11 @@ NOT = ID: "pas"
 <exp2> ::= <exp2> BITWISE_OR <exp3> | <exp3>;
 <exp3> ::= <exp3> BITWISE_XOR <exp4> | <exp4>;
 <exp4> ::= <exp4> BITWISE_AND <exp5> | <exp5>;
-<exp5> ::= <exp5> <op_rel> <exp6> | <exp6>;
+
+<exp5> ::= <exp6> <exp5_linha>;
+<exp5_linha> ::= <op_rel> <exp6> <exp5_linha> #22
+                | î;
+
 <exp6> ::= <exp6> <op_bitwise> <exp7> | <exp7>;
 
 <exp7> ::= <exp8> <exp7_linha>;
@@ -302,7 +306,12 @@ NOT = ID: "pas"
 
 <acesso_vetor_exp> ::= "[" #32 <exp> "]" #33;
 
-<op_rel> ::= GREATER_EQ | LESSER_EQ | EQUAL_CONDITION | DIFFERENT_CONDITION | GREATER | LESSER; 
+<op_rel> ::= GREATER_EQ #23
+            | LESSER_EQ #23
+            | EQUAL_CONDITION #23 
+            | DIFFERENT_CONDITION #23 
+            | GREATER #23 
+            | LESSER #23; 
 <op_negativa> ::= SUB | BITWISE_NOT | NOT;
 <op_bitwise> ::= LEFT_SHIFT | RIGHT_SHIFT;
 
@@ -375,11 +384,8 @@ NOT = ID: "pas"
 
 // ---------------------------------------------------------------------------------------------------
 // Condicional
-<condicional> ::= IF <condicao> <bloco> <resto_if>;
-
-<resto_if> ::= <tipo_else> | î;
-<tipo_else> ::= ELSE IF <condicao> <bloco> <tipo_else>
-              | ELSE <bloco>;
+<condicional> ::= IF <condicao> #35 <bloco> <resto_if> #38;
+<resto_if> ::= ELSE #36 <bloco> | î #37;
 
 // ---------------------------------------------------------------------------------------------------
 // Função e Procedimento

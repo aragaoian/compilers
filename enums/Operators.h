@@ -1,0 +1,6 @@
+#ifndef OPERATORS_H
+#define OPERATORS_H
+
+enum class Operators { SUM, SUB, MUL, DIV, OR, AND, NOT, GREATER, GREATER_EQ, LESSER, LESSER_EQ, EQUAL, DIFFERENT};
+
+#endif
