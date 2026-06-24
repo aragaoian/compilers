@@ -38,3 +38,8 @@
 | #36 | inicializar else |
 | #37 | flagar sem else |
 | #38 | finalizar if (branch) |
+| #39 | inicializar while |
+| #40 | verificar condição while |
+| #41 | retorno e finalizar while |
+| #42 | inicializar do_while |
+| #43 | verificar condição do while do do_while |

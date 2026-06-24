@@ -116,3 +116,86 @@ let v: [5]ent = {1, 2, 3, 4, 5};
 
 si(v[i + 1] < v[i + 7]){}
 ```
+
+## 2. Testes Loops
+
+### 2.1 While Loop
+```
+alorsq(1 < 2){
+	let a: ent = 1;
+	let b: ent = 2;
+	si(a == b){
+		st << 67;
+	}
+}
+```
+
+```
+.data
+	a: 1
+	b: 2
+
+.text
+	while_loop_0:
+	LDI 1
+	STO 1000
+	LDI 2
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_while_loop_0
+	LD a
+	STO 1000
+	LD b
+	STO 1001
+	LD 1000
+	SUB 1001
+	BNE else_0
+
+	LDI 67
+	STO $out_port
+
+	else_0:
+	JMP while_loop_0
+	end_while_loop_0:
+```
+
+### 2.2 Do While Loop
+```
+faire{
+	let a: ent = 1;
+	let b: ent = 2;
+	si(a == b){
+		st << 67;
+	}
+}
+alorsq(1 < 2);
+```
+
+```
+.data
+	a: 1
+	b: 2
+
+.text
+	do_while_loop_0:
+	LD a
+	STO 1000
+	LD b
+	STO 1001
+	LD 1000
+	SUB 1001
+	BNE else_0
+
+	LDI 67
+	STO $out_port
+
+	else_0:
+	LDI 1
+	STO 1000
+	LDI 2
+	STO 1001
+	LD 1000
+	SUB 1001
+	BLT do_while_loop_0
+```

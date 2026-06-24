@@ -1,5 +1,6 @@
 #include "SymbolsTableManager.h"
 #include "../enums/Operators.h"
+#include "../enums/BuildingStructure.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -42,5 +43,5 @@ class CodeGenerator {
     void subi(int value);
 
     void label(std::string l);
-    void branching(Operators op, std::string label);
+    void branching(BuildingStructure bb, Operators op, std::string label);
 };
