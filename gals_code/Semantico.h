@@ -81,11 +81,14 @@ class Semantico {
     std::vector<SemanticValue> pendingArgs;
 
     std::stack<Operators> operators;
-
-    int conditionalCounter = 0;
     std::stack<Operators> conditionsOperator;
+    
+    int conditionalCounter = 0;
     std::stack<int> ifController;
     std::stack<bool> elseController;
+
+    int loopCounter = 0;
+    std::stack<int> loopController;
 };
 
 #endif

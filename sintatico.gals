@@ -378,14 +378,14 @@ NOT = ID: "pas"
 
 <after_item> ::= <atribuicao>;
 
-<while> ::= WHILE <condicao> <bloco>;
+<while> ::= WHILE #39 <condicao> #40 <bloco> #41;
 
-<do_while> ::= DO <bloco> WHILE <condicao> ";";
+<do_while> ::= DO #42 <bloco> WHILE <condicao> #43 ";";
 
 // ---------------------------------------------------------------------------------------------------
 // Condicional
 <condicional> ::= IF <condicao> #35 <bloco> <resto_if> #38;
-<resto_if> ::= ELSE #36 <bloco> | î #37;
+<resto_if> ::= ELSE #36 <bloco> | î #37; 
 
 // ---------------------------------------------------------------------------------------------------
 // Função e Procedimento
@@ -420,3 +420,4 @@ NOT = ID: "pas"
 
 <argumentos> ::= <exp> #7 <lista_argumentos> | î;
 <lista_argumentos> ::= "," <exp> #7 <lista_argumentos> | î;
+

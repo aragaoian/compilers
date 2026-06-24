@@ -43,6 +43,11 @@
 #define INICIA_ELSE 36
 #define FLAG_SEM_ELSE 37
 #define FINALIZA_IF 38
+#define INICIALIZA_WHILE 39
+#define CONDICAO_WHILE 40
+#define RETURN_WHILE 41
+#define INICIALIZA_DO_WHILE 42
+#define CONDICAO_DO_WHILE 43
 
 static std::string varTypeEnumToString(VariableTypes varType) {
     switch (varType) {
@@ -319,6 +324,24 @@ void Semantico::reset() {
 
     currentFunctionName.clear();
     currentReturnType = DataTypes::VOID;
+
+    while (!operators.empty()) {
+        operators.pop();
+    }
+    while (!conditionsOperator.empty()) {
+        conditionsOperator.pop();
+    }
+    while (!ifController.empty()) {
+        ifController.pop();
+    }
+    while (!elseController.empty()) {
+        elseController.pop();
+    }
+    while(!loopController.empty()) {
+        loopController.pop();
+    }
+    conditionalCounter = 0;
+    loopCounter = 0;
 
     messages.clear();
 }
@@ -1411,7 +1434,7 @@ void Semantico::executeAction(int action, const Token *token) {
 
         Operators op = conditionsOperator.top();
         conditionsOperator.pop();
-        codeGenerator.branching(op, "else_" + std::to_string(conditionalCounter));
+        codeGenerator.branching(BuildingStructure::CONDITIONAL, op, "else_" + std::to_string(conditionalCounter));
 
         ifController.push(conditionalCounter);
         conditionalCounter++;
@@ -1445,13 +1468,55 @@ void Semantico::executeAction(int action, const Token *token) {
         // NOTE
         // O operador pouco importa, só não pode existir na lista
         // para consequentemente cair no case default.
-        codeGenerator.branching(Operators::NOT, "end_condition_" + std::to_string(id));
+        codeGenerator.branching(BuildingStructure::CONDITIONAL, Operators::NOT, "end_condition_" + std::to_string(id));
         codeGenerator.label("else_" + std::to_string(id));
         break;
     }
 
     case FLAG_SEM_ELSE: {
         elseController.push(false);
+        break;
+    }
+
+    case INICIALIZA_WHILE: {
+        codeGenerator.label("while_loop_" + std::to_string(loopCounter));
+        loopController.push(loopCounter);
+        loopCounter++;
+        break;
+    }
+
+    case CONDICAO_WHILE: {
+        Operators op = conditionsOperator.top();
+        conditionsOperator.pop();
+        int id = loopController.top();
+        // NOTE
+        // Usar o estilo de branching das condicionais
+        // pois o while convencional tem a condição invertida também
+        codeGenerator.branching(BuildingStructure::CONDITIONAL, op, "end_while_loop_" + std::to_string(id));
+        break;
+    }
+
+    case RETURN_WHILE: {
+        int id = loopController.top();
+        loopController.pop();
+        codeGenerator.branching(BuildingStructure::LOOP, Operators::NOT, "while_loop_" + std::to_string(id));
+        codeGenerator.label("end_while_loop_" + std::to_string(id));
+        break;
+    }
+
+    case INICIALIZA_DO_WHILE: {
+        codeGenerator.label("do_while_loop_" + std::to_string(loopCounter));
+        loopController.push(loopCounter);
+        loopCounter++;
+        break;
+    }
+
+    case CONDICAO_DO_WHILE: {
+        Operators op = conditionsOperator.top();
+        conditionsOperator.pop();
+        int id = loopController.top();
+        loopController.pop();
+        codeGenerator.branching(BuildingStructure::LOOP, op, "do_while_loop_" + std::to_string(id));
         break;
     }
 

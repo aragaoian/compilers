@@ -1,5 +1,6 @@
 #include "CodeGenator.h"
 #include "../enums/Operators.h"
+#include "../enums/BuildingStructure.h"
 #include <string>
 
 CodeGenerator::CodeGenerator() = default;
@@ -67,22 +68,42 @@ void CodeGenerator::label(std::string l){
     text.push_back(l + ":");
 }
 
-void CodeGenerator::branching(Operators op, std::string label) {
+void CodeGenerator::branching(BuildingStructure bs, Operators op, std::string label) {
     std::string instruction;
-    if (Operators::GREATER == op){
-        instruction = "BLE";
-    }else if (Operators::GREATER_EQ == op){
-        instruction = "BLT";
-    }else if (Operators::LESSER == op){
-        instruction = "BGE";
-    }else if (Operators::LESSER_EQ == op){
-        instruction = "BGT";
-    }else if (Operators::EQUAL == op){
-        instruction = "BNE";
-    }else if (Operators::DIFFERENT == op){
-        instruction = "BEQ";
-    }else {
-        instruction = "JMP";
+
+
+    if(bs == BuildingStructure::CONDITIONAL){
+        if (Operators::GREATER == op){
+            instruction = "BLE";
+        }else if (Operators::GREATER_EQ == op){
+            instruction = "BLT";
+        }else if (Operators::LESSER == op){
+            instruction = "BGE";
+        }else if (Operators::LESSER_EQ == op){
+            instruction = "BGT";
+        }else if (Operators::EQUAL == op){
+            instruction = "BNE";
+        }else if (Operators::DIFFERENT == op){
+            instruction = "BEQ";
+        }else {
+            instruction = "JMP";
+        }
+    }else if(bs == BuildingStructure::LOOP){
+        if (Operators::GREATER == op){
+            instruction = "BGT";
+        }else if (Operators::GREATER_EQ == op){
+            instruction = "BGE";
+        }else if (Operators::LESSER == op){
+            instruction = "BLT";
+        }else if (Operators::LESSER_EQ == op){
+            instruction = "BLE";
+        }else if (Operators::EQUAL == op){
+            instruction = "BEQ";
+        }else if (Operators::DIFFERENT == op){
+            instruction = "BNE";
+        }else {
+            instruction = "JMP";
+        }
     }
 
     text.push_back(instruction + " " + label);
