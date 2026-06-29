@@ -48,6 +48,9 @@
 #define RETURN_WHILE 41
 #define INICIALIZA_DO_WHILE 42
 #define CONDICAO_DO_WHILE 43
+#define INICIALIZA_FOR 44
+#define CONDICAO_FOR 45
+#define RETURN_FOR 46
 
 static std::string varTypeEnumToString(VariableTypes varType) {
     switch (varType) {
@@ -1517,6 +1520,32 @@ void Semantico::executeAction(int action, const Token *token) {
         int id = loopController.top();
         loopController.pop();
         codeGenerator.branching(BuildingStructure::LOOP, op, "do_while_loop_" + std::to_string(id));
+        break;
+    }
+
+    case INICIALIZA_FOR: {
+        codeGenerator.label("for_loop_" + std::to_string(loopCounter));
+        loopController.push(loopCounter);
+        loopCounter++;
+        break;
+    }
+
+    case CONDICAO_FOR: {
+        Operators op = conditionsOperator.top();
+        conditionsOperator.pop();
+        int id = loopController.top();
+        // NOTE
+        // Usar o estilo de branching das condicionais
+        // pois o for tem a condição invertida também
+        codeGenerator.branching(BuildingStructure::CONDITIONAL, op, "end_for_loop_" + std::to_string(id));
+        break;
+    }
+
+    case RETURN_FOR: {
+        int id = loopController.top();
+        loopController.pop();
+        codeGenerator.branching(BuildingStructure::LOOP, Operators::NOT, "for_loop_" + std::to_string(id));
+        codeGenerator.label("end_for_loop_" + std::to_string(id));
         break;
     }
 

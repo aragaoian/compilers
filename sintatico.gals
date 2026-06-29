@@ -71,8 +71,8 @@ EQUAL: "="
 MOD: "%"
 INCREMENT: "++"
 DECREMENT: "--"
-EQUAL_SUM: "=+"
-EQUAL_SUB: "=-"
+EQUAL_SUM: "+="
+EQUAL_SUB: "-="
 
 // Operadores relacionais
 GREATER_EQ: ">="
@@ -361,10 +361,10 @@ NOT = ID: "pas"
           | <while>
           | <do_while>;
 
-<for_loop> ::= FOR "(" <init_for> ";" <cond_for> ";" <after_for> ")" <bloco>;
+<for_loop> ::= FOR #44 "(" <init_for> ";" <exp> #45 ";" <atribuicao> #47 ")" <bloco> #46;
 
 <init_for> ::= <declaracao>
-            | <atribuicao> <lista_init_atribuicao>
+            | <atribuicao>
             | î;
 
 <lista_init_atribuicao> ::= "," <atribuicao> <lista_init_atribuicao>
@@ -420,4 +420,3 @@ NOT = ID: "pas"
 
 <argumentos> ::= <exp> #7 <lista_argumentos> | î;
 <lista_argumentos> ::= "," <exp> #7 <lista_argumentos> | î;
-
