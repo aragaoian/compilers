@@ -169,6 +169,8 @@ NOT = ID: "pas"
 <dimensoes_io>
 <loops>
 <for_loop>
+<declaracao_for_loop>
+<declaracao_for_loop_pos>
 <init_for>
 <lista_init_atribuicao>
 <cond_for>
@@ -332,8 +334,8 @@ NOT = ID: "pas"
 <rvalue> ::= <exp>;
 
 <tipo_atribuicao> ::= EQUAL
-                    | EQUAL_SUM
-                    | EQUAL_SUB;
+                    | EQUAL_SUM #48
+                    | EQUAL_SUB #48;
 
 // ---------------------------------------------------------------------------------------------------
 // IO 
@@ -361,9 +363,14 @@ NOT = ID: "pas"
           | <while>
           | <do_while>;
 
-<for_loop> ::= FOR #44 "(" <init_for> ";" <exp> #45 ";" <atribuicao> #47 ")" <bloco> #46;
+<for_loop> ::= FOR #49 "(" <init_for> #44 ";" <exp> #45 ";" <atribuicao> #46 ")" <bloco> #47;
 
-<init_for> ::= <declaracao>
+<declaracao_for_loop> ::= ID #1 #18 ":" <tipo_variavel> <tipo_dado> <declaracao_for_loop_pos> #14;
+
+<declaracao_for_loop_pos> ::= EQUAL #20 <exp> #19 #13 #21
+                          | EQUAL #20 <init_vetor> #19 #13 #21;
+
+<init_for> ::= <declaracao_for_loop>
             | <atribuicao>
             | î;
 

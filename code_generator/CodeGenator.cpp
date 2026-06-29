@@ -1,9 +1,18 @@
 #include "CodeGenator.h"
-#include "../enums/Operators.h"
 #include "../enums/BuildingStructure.h"
+#include "../enums/Operators.h"
 #include <string>
 
 CodeGenerator::CodeGenerator() = default;
+
+void CodeGenerator::emitText(const std::string &line) {
+    if (isDeferringText) {
+        deferredText.push_back(line);
+        return;
+    }
+
+    text.push_back(line);
+}
 
 void CodeGenerator::generateData(const std::vector<SymbolRow> &symbols) {
     for (SymbolRow row : symbols) {
@@ -27,23 +36,23 @@ void CodeGenerator::generateData(const std::vector<SymbolRow> &symbols) {
     }
 }
 
-void CodeGenerator::store(std::string var) { text.push_back("STO " + var); }
+void CodeGenerator::store(std::string var) { emitText("STO " + var); }
 
-void CodeGenerator::load(std::string var) { text.push_back("LD " + var); }
+void CodeGenerator::load(std::string var) { emitText("LD " + var); }
 
-void CodeGenerator::loadi(int value) { text.push_back("LDI " + std::to_string(value)); }
+void CodeGenerator::loadi(int value) { emitText("LDI " + std::to_string(value)); }
 
-void CodeGenerator::loadVector(const std::string &var) { text.push_back("LDV " + var); }
+void CodeGenerator::loadVector(const std::string &var) { emitText("LDV " + var); }
 
-void CodeGenerator::storeVector(const std::string &var) { text.push_back("STOV " + var); }
+void CodeGenerator::storeVector(const std::string &var) { emitText("STOV " + var); }
 
-void CodeGenerator::add(std::string var) { text.push_back("ADD " + var); }
+void CodeGenerator::add(std::string var) { emitText("ADD " + var); }
 
-void CodeGenerator::addi(int value) { text.push_back("ADDI " + std::to_string(value)); }
+void CodeGenerator::addi(int value) { emitText("ADDI " + std::to_string(value)); }
 
-void CodeGenerator::sub(std::string var) { text.push_back("SUB " + var); }
+void CodeGenerator::sub(std::string var) { emitText("SUB " + var); }
 
-void CodeGenerator::subi(int value) { text.push_back("SUBI " + std::to_string(value)); }
+void CodeGenerator::subi(int value) { emitText("SUBI " + std::to_string(value)); }
 
 std::string CodeGenerator::getFreeTemp() {
     const std::string temps[] = {TEMP1, TEMP2, TEMP3};
@@ -64,49 +73,46 @@ void CodeGenerator::freeTemp(const std::string &temp) {
     }
 }
 
-void CodeGenerator::label(std::string l){
-    text.push_back(l + ":");
-}
+void CodeGenerator::label(std::string l) { emitText(l + ":"); }
 
 void CodeGenerator::branching(BuildingStructure bs, Operators op, std::string label) {
     std::string instruction;
 
-
-    if(bs == BuildingStructure::CONDITIONAL){
-        if (Operators::GREATER == op){
+    if (bs == BuildingStructure::CONDITIONAL) {
+        if (Operators::GREATER == op) {
             instruction = "BLE";
-        }else if (Operators::GREATER_EQ == op){
+        } else if (Operators::GREATER_EQ == op) {
             instruction = "BLT";
-        }else if (Operators::LESSER == op){
+        } else if (Operators::LESSER == op) {
             instruction = "BGE";
-        }else if (Operators::LESSER_EQ == op){
+        } else if (Operators::LESSER_EQ == op) {
             instruction = "BGT";
-        }else if (Operators::EQUAL == op){
+        } else if (Operators::EQUAL == op) {
             instruction = "BNE";
-        }else if (Operators::DIFFERENT == op){
+        } else if (Operators::DIFFERENT == op) {
             instruction = "BEQ";
-        }else {
+        } else {
             instruction = "JMP";
         }
-    }else if(bs == BuildingStructure::LOOP){
-        if (Operators::GREATER == op){
+    } else if (bs == BuildingStructure::LOOP) {
+        if (Operators::GREATER == op) {
             instruction = "BGT";
-        }else if (Operators::GREATER_EQ == op){
+        } else if (Operators::GREATER_EQ == op) {
             instruction = "BGE";
-        }else if (Operators::LESSER == op){
+        } else if (Operators::LESSER == op) {
             instruction = "BLT";
-        }else if (Operators::LESSER_EQ == op){
+        } else if (Operators::LESSER_EQ == op) {
             instruction = "BLE";
-        }else if (Operators::EQUAL == op){
+        } else if (Operators::EQUAL == op) {
             instruction = "BEQ";
-        }else if (Operators::DIFFERENT == op){
+        } else if (Operators::DIFFERENT == op) {
             instruction = "BNE";
-        }else {
+        } else {
             instruction = "JMP";
         }
     }
 
-    text.push_back(instruction + " " + label);
+    emitText(instruction + " " + label);
 }
 
 std::string CodeGenerator::generate() {
@@ -139,7 +145,22 @@ std::string CodeGenerator::generateWithSymbols(const std::vector<SymbolRow> &sym
 void CodeGenerator::clear() {
     data.clear();
     text.clear();
+    deferredText.clear();
+    isDeferringText = false;
     tempPointers = {{TEMP1, false}, {TEMP2, false}, {TEMP3, false}};
 }
 
-void CodeGenerator::newLine() { text.push_back(""); }
+void CodeGenerator::newLine() { emitText(""); }
+
+void CodeGenerator::beginDeferredText() {
+    deferredText.clear();
+    isDeferringText = true;
+}
+
+void CodeGenerator::endDeferredText() { isDeferringText = false; }
+
+void CodeGenerator::flushDeferredText() {
+    endDeferredText();
+    text.insert(text.end(), deferredText.begin(), deferredText.end());
+    deferredText.clear();
+}

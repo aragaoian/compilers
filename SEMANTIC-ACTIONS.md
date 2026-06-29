@@ -45,4 +45,7 @@
 | #43 | verificar condição do while do do_while |
 | #44 | inicializar for |
 | #45 | verificar condição do for |
-| #46 | retorno e finalizar for |
+| #46 | captura a atribuição (afterthought) |
+| #47 | retorno e finalizar for |
+| #48 | capture equal sum e sub |
+| #49 | abrir escopo do for |

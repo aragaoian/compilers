@@ -4,7 +4,6 @@
 #include <iostream>
 #include <stdexcept>
 
-
 #define GUARDA_ID 1
 #define GUARDA_TIPO_DADO 2
 #define GUARDA_LITERAL 3
@@ -50,7 +49,10 @@
 #define CONDICAO_DO_WHILE 43
 #define INICIALIZA_FOR 44
 #define CONDICAO_FOR 45
-#define RETURN_FOR 46
+#define CAPTURA_AFTERTHOUGHT 46
+#define RETURN_FOR 47
+#define GUARDA_OPERADOR_ATRIBUICAO 48
+#define ABRE_ESCOPO_FOR 49
 
 static std::string varTypeEnumToString(VariableTypes varType) {
     switch (varType) {
@@ -71,8 +73,10 @@ static std::string varTypeEnumToString(VariableTypes varType) {
 
 static Operators operatorFromToken(TokenId tokenId) {
     switch (tokenId) {
+    case t_EQUAL_SUM:
     case t_SUM:
         return Operators::SUM;
+    case t_EQUAL_SUB:
     case t_SUB:
         return Operators::SUB;
     case t_MUL:
@@ -282,6 +286,48 @@ void Semantico::freeExpressionTemp(const SemanticValue &value) {
     }
 }
 
+void Semantico::attributionSumPipeline(std::stack<SemanticValue> &expressionValues,
+                                       SemanticValue left, SemanticValue right, Operators op,
+                                       const Token *token) {
+    if (!expressionValues.empty()) {
+        materializeAccumulator(expressionValues.top());
+    }
+    materializeAccumulator(right);
+    emitLoadValue(left, token);
+    emitApplyOperator(op, right, token);
+    freeExpressionTemp(left);
+    freeExpressionTemp(right);
+    expressionValues.push({DataTypes::INT, "", ValueKind::ACCUMULATOR});
+}
+
+void Semantico::consumeBooleanCondition(const Token *token) {
+    if (literals.empty()) {
+        throw SemanticError("Condição inválida.", token->getPosition());
+    }
+
+    SemanticValue condition = literals.top();
+    literals.pop();
+
+    if (condition.dataType != DataTypes::BOOLEAN) {
+        throw SemanticError("O resultado da condição não é booleano!", token->getPosition());
+    }
+}
+
+void Semantico::emitCompoundAssignment(const std::string &id, const MetaData *metadata,
+                                       SemanticValue value, const Token *token) {
+    if (metadata->dataType != DataTypes::INT || value.dataType != DataTypes::INT) {
+        throw SemanticError("Atribuição composta só suporta inteiros na geração de código.",
+                            token->getPosition());
+    }
+
+    materializeAccumulator(value);
+    codeGenerator.load(id);
+    emitApplyOperator(pendingAssignmentOperator, value, token);
+    codeGenerator.store(id);
+    codeGenerator.newLine();
+    freeExpressionTemp(value);
+}
+
 void Semantico::reset() {
     stManager.reset();
     currentScope = stManager.getRootScope();
@@ -307,6 +353,7 @@ void Semantico::reset() {
     currentIoContext = IoContext::NONE;
     hasPendingVectorAssignment = false;
     pendingVectorAssignmentIndexTemp.clear();
+    hasPendingCompoundAssignment = false;
     while (!arrSizes.empty()) {
         arrSizes.pop();
     }
@@ -340,8 +387,11 @@ void Semantico::reset() {
     while (!elseController.empty()) {
         elseController.pop();
     }
-    while(!loopController.empty()) {
+    while (!loopController.empty()) {
         loopController.pop();
+    }
+    while (!forScopeController.empty()) {
+        forScopeController.pop();
     }
     conditionalCounter = 0;
     loopCounter = 0;
@@ -461,10 +511,10 @@ void Semantico::executeAction(int action, const Token *token) {
 
         MetaData *mt = stManager.returnMetaData(id, currentScope);
         if (mt == nullptr) {
-            throw SemanticError("Variável " + id + " não foi encontrada!", 
-                                token->getPosition());
+            throw SemanticError("Variável " + id + " não foi encontrada!", token->getPosition());
         }
 
+        bool wasInitialized = mt->isInitialized;
         mt->isInitialized = true;
 
         auto literal = literals.top();
@@ -478,6 +528,12 @@ void Semantico::executeAction(int action, const Token *token) {
         }
 
         if (hasPendingVectorAssignment) {
+            if (hasPendingCompoundAssignment) {
+                hasPendingCompoundAssignment = false;
+                throw SemanticError("Atribuição composta em vetor ainda não é suportada.",
+                                    token->getPosition());
+            }
+
             std::string valueTemp = codeGenerator.getFreeTemp();
             if (valueTemp.empty()) {
                 throw SemanticError("Não há temporários livres para avaliar a atribuição.",
@@ -497,6 +553,15 @@ void Semantico::executeAction(int action, const Token *token) {
 
             hasPendingVectorAssignment = false;
             pendingVectorAssignmentIndexTemp.clear();
+        } else if (hasPendingCompoundAssignment) {
+            if (!wasInitialized) {
+                std::string formatted =
+                    "[AVISO] " + id + " não foi inicializado(a), usando lixo de memória.";
+                messages.push_back(formatted);
+            }
+            stManager.useSymbol(id, currentScope);
+            emitCompoundAssignment(id, mt, literal, token);
+            hasPendingCompoundAssignment = false;
         } else {
             emitStoreInitializedValue(id, literal, token);
         }
@@ -1006,15 +1071,7 @@ void Semantico::executeAction(int action, const Token *token) {
             // int + int
             if (leftType == DataTypes::INT && rightType == DataTypes::INT) {
 
-                if (!expressionValues.empty()) {
-                    materializeAccumulator(expressionValues.top());
-                }
-                materializeAccumulator(right);
-                emitLoadValue(left, token);
-                emitApplyOperator(op, right, token);
-                freeExpressionTemp(left);
-                freeExpressionTemp(right);
-                expressionValues.push({DataTypes::INT, "", ValueKind::ACCUMULATOR});
+                attributionSumPipeline(expressionValues, left, right, op, token);
                 break;
             }
 
@@ -1162,12 +1219,12 @@ void Semantico::executeAction(int action, const Token *token) {
             break;
         }
 
-        case Operators::GREATER: 
+        case Operators::GREATER:
         case Operators::GREATER_EQ:
         case Operators::LESSER:
         case Operators::LESSER_EQ:
         case Operators::EQUAL:
-        case Operators::DIFFERENT:{
+        case Operators::DIFFERENT: {
             if (right.kind == ValueKind::ACCUMULATOR) {
                 materializeAccumulator(right);
             } else {
@@ -1210,7 +1267,6 @@ void Semantico::executeAction(int action, const Token *token) {
             freeExpressionTemp(right);
             break;
         }
-
         }
 
         break;
@@ -1218,6 +1274,11 @@ void Semantico::executeAction(int action, const Token *token) {
 
     case GUARDA_OPERADOR:
         operators.push(operatorFromToken(token->getId()));
+        break;
+
+    case GUARDA_OPERADOR_ATRIBUICAO:
+        pendingAssignmentOperator = operatorFromToken(token->getId());
+        hasPendingCompoundAssignment = true;
         break;
 
     case AVALIA_RETORNO: {
@@ -1431,13 +1492,14 @@ void Semantico::executeAction(int action, const Token *token) {
         SemanticValue condition = literals.top();
         literals.pop();
 
-        if(condition.dataType != DataTypes::BOOLEAN){
+        if (condition.dataType != DataTypes::BOOLEAN) {
             throw SemanticError("O resultado da condição não é booleano!", token->getPosition());
         }
 
         Operators op = conditionsOperator.top();
         conditionsOperator.pop();
-        codeGenerator.branching(BuildingStructure::CONDITIONAL, op, "else_" + std::to_string(conditionalCounter));
+        codeGenerator.branching(BuildingStructure::CONDITIONAL, op,
+                                "else_" + std::to_string(conditionalCounter));
 
         ifController.push(conditionalCounter);
         conditionalCounter++;
@@ -1450,14 +1512,14 @@ void Semantico::executeAction(int action, const Token *token) {
         ifController.pop();
 
         bool hasElseClause = false;
-        if (!elseController.empty()){
+        if (!elseController.empty()) {
             hasElseClause = elseController.top();
             elseController.pop();
         }
 
-        if(hasElseClause){
+        if (hasElseClause) {
             codeGenerator.label("end_condition_" + std::to_string(id));
-        }else{
+        } else {
             codeGenerator.label("else_" + std::to_string(id));
         }
 
@@ -1471,7 +1533,8 @@ void Semantico::executeAction(int action, const Token *token) {
         // NOTE
         // O operador pouco importa, só não pode existir na lista
         // para consequentemente cair no case default.
-        codeGenerator.branching(BuildingStructure::CONDITIONAL, Operators::NOT, "end_condition_" + std::to_string(id));
+        codeGenerator.branching(BuildingStructure::CONDITIONAL, Operators::NOT,
+                                "end_condition_" + std::to_string(id));
         codeGenerator.label("else_" + std::to_string(id));
         break;
     }
@@ -1489,20 +1552,23 @@ void Semantico::executeAction(int action, const Token *token) {
     }
 
     case CONDICAO_WHILE: {
+        consumeBooleanCondition(token);
         Operators op = conditionsOperator.top();
         conditionsOperator.pop();
         int id = loopController.top();
         // NOTE
         // Usar o estilo de branching das condicionais
         // pois o while convencional tem a condição invertida também
-        codeGenerator.branching(BuildingStructure::CONDITIONAL, op, "end_while_loop_" + std::to_string(id));
+        codeGenerator.branching(BuildingStructure::CONDITIONAL, op,
+                                "end_while_loop_" + std::to_string(id));
         break;
     }
 
     case RETURN_WHILE: {
         int id = loopController.top();
         loopController.pop();
-        codeGenerator.branching(BuildingStructure::LOOP, Operators::NOT, "while_loop_" + std::to_string(id));
+        codeGenerator.branching(BuildingStructure::LOOP, Operators::NOT,
+                                "while_loop_" + std::to_string(id));
         codeGenerator.label("end_while_loop_" + std::to_string(id));
         break;
     }
@@ -1515,6 +1581,7 @@ void Semantico::executeAction(int action, const Token *token) {
     }
 
     case CONDICAO_DO_WHILE: {
+        consumeBooleanCondition(token);
         Operators op = conditionsOperator.top();
         conditionsOperator.pop();
         int id = loopController.top();
@@ -1524,6 +1591,21 @@ void Semantico::executeAction(int action, const Token *token) {
     }
 
     case INICIALIZA_FOR: {
+        if (forScopeController.size() == loopController.size()) {
+            if (currentScope == nullptr) {
+                currentScope = stManager.getRootScope();
+            }
+            currentScope = stManager.enterScope(currentScope);
+            forScopeController.push(true);
+        }
+
+        if (!ids.empty() && !variableTypes.empty() && !dataTypes.empty()) {
+            if (isInitialized && pendingInitCount == 0 && !declLiterals.empty()) {
+                pendingInitCount = 1;
+            }
+            executeAction(DECLARACAO, token);
+        }
+
         codeGenerator.label("for_loop_" + std::to_string(loopCounter));
         loopController.push(loopCounter);
         loopCounter++;
@@ -1531,21 +1613,45 @@ void Semantico::executeAction(int action, const Token *token) {
     }
 
     case CONDICAO_FOR: {
+        consumeBooleanCondition(token);
         Operators op = conditionsOperator.top();
         conditionsOperator.pop();
         int id = loopController.top();
         // NOTE
         // Usar o estilo de branching das condicionais
         // pois o for tem a condição invertida também
-        codeGenerator.branching(BuildingStructure::CONDITIONAL, op, "end_for_loop_" + std::to_string(id));
+        codeGenerator.branching(BuildingStructure::CONDITIONAL, op,
+                                "end_for_loop_" + std::to_string(id));
+        codeGenerator.beginDeferredText();
+        break;
+    }
+
+    case CAPTURA_AFTERTHOUGHT: {
+        codeGenerator.endDeferredText();
         break;
     }
 
     case RETURN_FOR: {
         int id = loopController.top();
         loopController.pop();
-        codeGenerator.branching(BuildingStructure::LOOP, Operators::NOT, "for_loop_" + std::to_string(id));
+        codeGenerator.flushDeferredText();
+        codeGenerator.branching(BuildingStructure::LOOP, Operators::NOT,
+                                "for_loop_" + std::to_string(id));
         codeGenerator.label("end_for_loop_" + std::to_string(id));
+        if (!forScopeController.empty()) {
+            forScopeController.pop();
+            currentScope = stManager.exitScope(currentScope);
+        }
+        break;
+    }
+
+    case ABRE_ESCOPO_FOR: {
+        if (currentScope == nullptr) {
+            currentScope = stManager.getRootScope();
+        }
+
+        currentScope = stManager.enterScope(currentScope);
+        forScopeController.push(true);
         break;
     }
 

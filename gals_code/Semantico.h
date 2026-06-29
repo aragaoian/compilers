@@ -1,8 +1,8 @@
 #ifndef SEMANTICO_H
 #define SEMANTICO_H
 
-#include "../enums/Operators.h"
 #include "../code_generator/CodeGenator.h"
+#include "../enums/Operators.h"
 #include "../symbols_table/SymbolsTableManager.h"
 #include "SemanticError.h"
 #include "Token.h"
@@ -42,6 +42,12 @@ class Semantico {
                                    const Token *token);
     void materializeAccumulator(SemanticValue &value);
     void freeExpressionTemp(const SemanticValue &value);
+    void attributionSumPipeline(std::stack<SemanticValue> &expressionValues, SemanticValue left,
+                                SemanticValue right, Operators op, const Token *token);
+    void consumeBooleanCondition(const Token *token);
+    void emitCompoundAssignment(const std::string &id, const MetaData *metadata,
+                                SemanticValue value, const Token *token);
+
     std::vector<std::string> messages;
 
     SymbolsTableManager stManager;
@@ -59,6 +65,8 @@ class Semantico {
     IoContext currentIoContext = IoContext::NONE;
     bool hasPendingVectorAssignment = false;
     std::string pendingVectorAssignmentIndexTemp;
+    bool hasPendingCompoundAssignment = false;
+    Operators pendingAssignmentOperator = Operators::SUM;
 
     std::stack<int> arrSizes;
     int pendingArraySize = 1;
@@ -82,13 +90,14 @@ class Semantico {
 
     std::stack<Operators> operators;
     std::stack<Operators> conditionsOperator;
-    
+
     int conditionalCounter = 0;
     std::stack<int> ifController;
     std::stack<bool> elseController;
 
     int loopCounter = 0;
     std::stack<int> loopController;
+    std::stack<bool> forScopeController;
 };
 
 #endif
