@@ -199,3 +199,214 @@ alorsq(1 < 2);
 	SUB 1001
 	BLT do_while_loop_0
 ```
+
+## 3. For loop
+
+### 3.1 Com constante
+
+```
+let a: ent = 0;
+pour(a = 1; a < 5; a += 1){
+	st << 67;
+}
+```
+
+```
+.data
+	a: 0
+
+.text
+	LDI 1
+	STO a
+
+	for_loop_0:
+	LD a
+	STO 1000
+	LDI 5
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_for_loop_0
+	LDI 67
+	STO $out_port
+
+	LD a
+	ADDI 1
+	STO a
+
+	JMP for_loop_0
+	end_for_loop_0:
+```
+
+### 3.2 Com variável
+
+```
+let a: ent = 0;
+let b: ent = 2;
+pour(a = 1; a < 5; a -= b){
+	st << 69;
+}
+```
+
+```
+.data
+	a: 0
+	b: 2
+
+.text
+	LDI 1
+	STO a
+
+	for_loop_0:
+	LD a
+	STO 1000
+	LDI 5
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_for_loop_0
+	LDI 69
+	STO $out_port
+
+	LD a
+	SUB b
+	STO a
+
+	JMP for_loop_0
+	end_for_loop_0:
+```
+
+### 3.3 Com vetor
+
+```
+let a: ent = 0;
+let b: [1]ent = {2};
+pour(a = 1; a < 5; a -= b[0]){
+	st << 69;
+}
+```
+
+
+```
+.data
+	a: 0
+	b: 2
+
+.text
+	LDI 1
+	STO a
+
+	for_loop_0:
+	LD a
+	STO 1000
+	LDI 5
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_for_loop_0
+	LDI 69
+	STO $out_port
+
+	LDI 0
+	STO $indr
+	LD b
+	STO 1000
+	LD a
+	SUB 1000
+	STO a
+
+	JMP for_loop_0
+	end_for_loop_0:
+```
+
+### 3.4 Com declaração
+
+```
+pour(a: ent = 1; a < 5; a += 1){
+	st << 69;
+}
+```
+
+```
+.data
+	a: 1
+
+.text
+	for_loop_0:
+	LD a
+	STO 1000
+	LDI 5
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_for_loop_0
+	LDI 69
+	STO $out_port
+
+	LD a
+	ADDI 1
+	STO a
+
+	JMP for_loop_0
+	end_for_loop_0:
+```
+
+## 4. Aninhamentos
+
+```
+pour(a: ent = 1; a < 10; a += 1){
+	alorsq(a < 5){
+		si(a == 3){
+			st << 3;
+		}
+		st << 67;
+	}
+}
+```
+
+```
+.data
+	a: 1
+
+.text
+	for_loop_0:
+	LD a
+	STO 1000
+	LDI 10
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_for_loop_0
+	
+	while_loop_1:
+	LD a
+	STO 1000
+	LDI 5
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_while_loop_1
+	LD a
+	STO 1000
+	LDI 3
+	STO 1001
+	LD 1000
+	SUB 1001
+	BNE else_0
+
+	LDI 3
+	STO $out_port
+
+	else_0:
+	LDI 67
+	STO $out_port
+
+	JMP while_loop_1
+	end_while_loop_1:
+	LD a
+	ADDI 1
+	STO a
+
+	JMP for_loop_0
+	end_for_loop_0:
+``` 

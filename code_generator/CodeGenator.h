@@ -1,6 +1,6 @@
-#include "SymbolsTableManager.h"
-#include "../enums/Operators.h"
 #include "../enums/BuildingStructure.h"
+#include "../enums/Operators.h"
+#include "SymbolsTableManager.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -13,6 +13,11 @@ class CodeGenerator {
   private:
     std::vector<std::string> data;
     std::vector<std::string> text;
+    std::vector<std::string> deferredText;
+    // NOTE
+    // é pra ser usado no afterthought do for loop.
+    // Atrasa a emissão do asm
+    bool isDeferringText = false;
     // NOTE
     // true -> sendo usado
     // false -> não está sendo usado
@@ -20,6 +25,7 @@ class CodeGenerator {
         {TEMP1, false}, {TEMP2, false}, {TEMP3, false}};
 
     void generateData(const std::vector<SymbolRow> &symbols);
+    void emitText(const std::string &line);
 
   public:
     CodeGenerator();
@@ -27,6 +33,9 @@ class CodeGenerator {
     std::string generateWithSymbols(const std::vector<SymbolRow> &symbols);
     void clear();
     void newLine();
+    void beginDeferredText();
+    void endDeferredText();
+    void flushDeferredText();
 
     std::string getFreeTemp();
     void freeTemp(const std::string &temp);
