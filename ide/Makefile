@@ -413,9 +413,9 @@ CompilerService.o: CompilerService.cpp CompilerService.h \
 		../gals_code/Token.h \
 		../gals_code/Constants.h \
 		../gals_code/Semantico.h \
-		../enums/Operators.h \
 		../code_generator/CodeGenator.h \
 		../enums/BuildingStructure.h \
+		../enums/Operators.h \
 		../gals_code/SemanticError.h \
 		../gals_code/Sintatico.h \
 		../gals_code/SyntacticError.h
@@ -438,19 +438,19 @@ Sintatico.o: ../gals_code/Sintatico.cpp ../gals_code/Sintatico.h \
 		../gals_code/LexicalError.h \
 		../gals_code/AnalysisError.h \
 		../gals_code/Semantico.h \
-		../enums/Operators.h \
 		../code_generator/CodeGenator.h \
-		../symbols_table/SymbolsTableManager.h \
 		../enums/BuildingStructure.h \
+		../enums/Operators.h \
+		../symbols_table/SymbolsTableManager.h \
 		../gals_code/SemanticError.h \
 		../gals_code/SyntacticError.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Sintatico.o ../gals_code/Sintatico.cpp
 
 Semantico.o: ../gals_code/Semantico.cpp ../gals_code/Semantico.h \
-		../enums/Operators.h \
 		../code_generator/CodeGenator.h \
-		../symbols_table/SymbolsTableManager.h \
 		../enums/BuildingStructure.h \
+		../enums/Operators.h \
+		../symbols_table/SymbolsTableManager.h \
 		../gals_code/SemanticError.h \
 		../gals_code/AnalysisError.h \
 		../gals_code/Token.h \
@@ -461,9 +461,9 @@ SymbolsTableManager.o: ../symbols_table/SymbolsTableManager.cpp ../symbols_table
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o SymbolsTableManager.o ../symbols_table/SymbolsTableManager.cpp
 
 CodeGenator.o: ../code_generator/CodeGenator.cpp ../code_generator/CodeGenator.h \
-		../symbols_table/SymbolsTableManager.h \
+		../enums/BuildingStructure.h \
 		../enums/Operators.h \
-		../enums/BuildingStructure.h
+		../symbols_table/SymbolsTableManager.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o CodeGenator.o ../code_generator/CodeGenator.cpp
 
 ####### Install
