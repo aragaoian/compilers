@@ -1070,7 +1070,6 @@ void Semantico::executeAction(int action, const Token *token) {
             // Uńico tipo que o BipOS aceita para operação
             // int + int
             if (leftType == DataTypes::INT && rightType == DataTypes::INT) {
-
                 attributionSumPipeline(expressionValues, left, right, op, token);
                 break;
             }

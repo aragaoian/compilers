@@ -7,7 +7,7 @@ CodeGenerator::CodeGenerator() = default;
 
 void CodeGenerator::emitText(const std::string &line) {
     if (isDeferringText) {
-        deferredText.push_back(line);
+        currDeferringTexts.push_back(line);
         return;
     }
 
@@ -145,7 +145,10 @@ std::string CodeGenerator::generateWithSymbols(const std::vector<SymbolRow> &sym
 void CodeGenerator::clear() {
     data.clear();
     text.clear();
-    deferredText.clear();
+    currDeferringTexts.clear();
+    while(!deferredTexts.empty()){
+        deferredTexts.pop();
+    }
     isDeferringText = false;
     tempPointers = {{TEMP1, false}, {TEMP2, false}, {TEMP3, false}};
 }
@@ -153,14 +156,20 @@ void CodeGenerator::clear() {
 void CodeGenerator::newLine() { emitText(""); }
 
 void CodeGenerator::beginDeferredText() {
-    deferredText.clear();
+    // NOTE
+    // Considerar a stack por motivos como:
+    // For's aninhados gerando múltiplos incrementos
+    currDeferringTexts.clear();
     isDeferringText = true;
 }
 
-void CodeGenerator::endDeferredText() { isDeferringText = false; }
+void CodeGenerator::endDeferredText() { 
+    deferredTexts.push(currDeferringTexts);
+    isDeferringText = false; 
+}
 
 void CodeGenerator::flushDeferredText() {
-    endDeferredText();
-    text.insert(text.end(), deferredText.begin(), deferredText.end());
-    deferredText.clear();
+    std::vector<std::string> deferredTextVec = deferredTexts.top();
+    deferredTexts.pop();
+    text.insert(text.end(), deferredTextVec.begin(), deferredTextVec.end());
 }

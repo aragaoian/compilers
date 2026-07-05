@@ -410,3 +410,62 @@ pour(a: ent = 1; a < 10; a += 1){
 	JMP for_loop_0
 	end_for_loop_0:
 ``` 
+
+```
+let a: ent = 0;
+let b: ent = 0;
+pour(a = 1; a < 5; a += 1){
+	st << 3;
+	pour(b = 3; b < 10; b += 1){
+		st << 10;
+	}
+}
+```
+
+```
+.data
+	a: 0
+	b: 0
+
+.text
+	LDI 1
+	STO a
+
+	for_loop_0:
+	LD a
+	STO 1000
+	LDI 5
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_for_loop_0
+	LDI 3
+	STO $out_port
+
+	LDI 3
+	STO b
+
+	for_loop_1:
+	LD b
+	STO 1000
+	LDI 10
+	STO 1001
+	LD 1000
+	SUB 1001
+	BGE end_for_loop_1
+	LDI 10
+	STO $out_port
+
+	LD b
+	ADDI 1
+	STO b
+
+	JMP for_loop_1
+	end_for_loop_1:
+	LD a
+	ADDI 1
+	STO a
+
+	JMP for_loop_0
+	end_for_loop_0:
+```

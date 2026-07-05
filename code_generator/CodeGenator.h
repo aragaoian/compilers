@@ -1,9 +1,10 @@
 #include "../enums/BuildingStructure.h"
 #include "../enums/Operators.h"
 #include "SymbolsTableManager.h"
+#include <stack>
+#include <vector>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 const std::string TEMP1 = "1000";
 const std::string TEMP2 = "1001";
@@ -13,7 +14,8 @@ class CodeGenerator {
   private:
     std::vector<std::string> data;
     std::vector<std::string> text;
-    std::vector<std::string> deferredText;
+    std::vector<std::string> currDeferringTexts;
+    std::stack<std::vector<std::string>> deferredTexts;
     // NOTE
     // é pra ser usado no afterthought do for loop.
     // Atrasa a emissão do asm
