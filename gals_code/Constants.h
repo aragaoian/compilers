@@ -106,10 +106,10 @@ const int ACCEPT = 3;
 const int GO_TO  = 4;
 const int ERROR  = 5;
 
-extern const int PARSER_TABLE[383][214][2];
+extern const int PARSER_TABLE[389][220][2];
 
 extern const int PRODUCTIONS[172][2];
 
-extern const char *PARSER_ERROR[383];
+extern const char *PARSER_ERROR[389];
 
 #endif

@@ -47,6 +47,16 @@ class Semantico {
     void consumeBooleanCondition(const Token *token);
     void emitCompoundAssignment(const std::string &id, const MetaData *metadata,
                                 SemanticValue value, const Token *token);
+    std::string functionLabel(const std::string &functionName, int sequence) const;
+    std::string parameterLabel(const std::string &paramName, const MetaData &metadata) const;
+    std::string variableLabel(const std::string &varName, const MetaData &metadata) const;
+    std::string variableLabelForCurrentContext(const std::string &varName) const;
+    std::string returnLabel(const std::string &functionName, int sequence) const;
+    std::string storageLabelFor(const std::string &id, const Token *token);
+    bool isPendingDeclarationId(const std::string &id) const;
+    std::vector<SymbolRow> parametersForFunction(const std::string &functionName) const;
+    void finishFunctionCall(bool pushReturnValue, const Token *token);
+    void validateMainFunction() const;
 
     std::vector<std::string> messages;
 
@@ -85,8 +95,13 @@ class Semantico {
 
     int currFuncParamatersCounter = 0;
     std::string currentFunctionName;
+    int currentFunctionSequence = -1;
+    int functionCounter = 1;
+    bool hasMainFunction = false;
+    bool currentFunctionHasReturn = false;
     DataTypes currentReturnType = DataTypes::VOID;
     std::vector<SemanticValue> pendingArgs;
+    std::string pendingCallName;
 
     std::stack<Operators> operators;
     std::stack<Operators> conditionsOperator;

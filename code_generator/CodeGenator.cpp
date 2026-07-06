@@ -15,10 +15,30 @@ void CodeGenerator::emitText(const std::string &line) {
 }
 
 void CodeGenerator::generateData(const std::vector<SymbolRow> &symbols) {
+    data.insert(data.end(), extraData.begin(), extraData.end());
     for (SymbolRow row : symbols) {
+        if (row.varType == VariableTypes::FUNCTION) {
+            if (row.dataType != DataTypes::VOID) {
+                data.push_back("return_" + row.symbol + "_" + std::to_string(row.sequence) + ": 0");
+            }
+            continue;
+        }
+
+        if (row.varType == VariableTypes::PARAMETER) {
+            data.push_back("param_" + row.symbol + "_" + std::to_string(row.sequence) + "_" +
+                           row.ownerFunction + ": 0");
+            continue;
+        }
+
+        std::string symbol = row.symbol;
+        if (row.varType == VariableTypes::SCALAR || row.varType == VariableTypes::ARRAY) {
+            std::string owner = row.ownerFunction.empty() ? "global" : row.ownerFunction;
+            symbol = "var_" + row.symbol + "_" + owner;
+        }
+
         if (row.arrSize > 0) {
             if (row.isInitialized && row.initialValue != "0") {
-                data.push_back(row.symbol + ": " + row.initialValue);
+                data.push_back(symbol + ": " + row.initialValue);
                 continue;
             }
 
@@ -29,9 +49,9 @@ void CodeGenerator::generateData(const std::vector<SymbolRow> &symbols) {
                     initialValues += ",";
                 }
             }
-            data.push_back(row.symbol + ": " + initialValues);
+            data.push_back(symbol + ": " + initialValues);
         } else {
-            data.push_back(row.symbol + ": " + row.initialValue);
+            data.push_back(symbol + ": " + row.initialValue);
         }
     }
 }
@@ -74,6 +94,14 @@ void CodeGenerator::freeTemp(const std::string &temp) {
 }
 
 void CodeGenerator::label(std::string l) { emitText(l + ":"); }
+
+void CodeGenerator::jump(std::string label) { emitText("JMP " + label); }
+
+void CodeGenerator::call(std::string label) { emitText("CALL " + label); }
+
+void CodeGenerator::ret() { emitText("RETURN"); }
+
+void CodeGenerator::halt() { emitText("HLT"); }
 
 void CodeGenerator::branching(BuildingStructure bs, Operators op, std::string label) {
     std::string instruction;
@@ -124,6 +152,7 @@ std::string CodeGenerator::generate() {
     }
 
     output += "\n.text\n";
+    output += "\tJMP function_main_0\n";
 
     for (std::string line : text) {
         if (line == "") {
@@ -144,6 +173,7 @@ std::string CodeGenerator::generateWithSymbols(const std::vector<SymbolRow> &sym
 
 void CodeGenerator::clear() {
     data.clear();
+    extraData.clear();
     text.clear();
     currDeferringTexts.clear();
     while(!deferredTexts.empty()){
@@ -154,6 +184,8 @@ void CodeGenerator::clear() {
 }
 
 void CodeGenerator::newLine() { emitText(""); }
+
+void CodeGenerator::emitData(const std::string &line) { extraData.push_back(line); }
 
 void CodeGenerator::beginDeferredText() {
     // NOTE

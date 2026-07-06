@@ -49,3 +49,9 @@
 | #47 | retorno e finalizar for |
 | #48 | capture equal sum e sub |
 | #49 | abrir escopo do for |
+| #50 | iniciar chamada de sub-rotina |
+| #51 | finalizar chamada de sub-rotina |
+| #52 | finalizar lista de argumentos |
+| #53 | iniciar corpo de sub-rotina |
+| #54 | finalizar corpo de sub-rotina |
+| #55 | finalizar chamada de sub-rotina como comando |
