@@ -232,7 +232,7 @@ NOT = ID: "pas"
 <comando_id> ::= ID #1 <resto_comando_id>;
 
 <resto_comando_id> ::= <acesso_lvalue> <tipo_atribuicao> <rvalue> #11
-                     | "(" <argumentos> ")" #12;
+                     | "(" #50 <argumentos> #52 ")" #55;
 
 // ---------------------------------------------------------------------------------------------------
 // Declaração
@@ -304,7 +304,7 @@ NOT = ID: "pas"
 
 <resto_id_exp> ::= <acesso_vetor_exp>
                 | î #12
-                | "(" <argumentos> ")" #12;
+                | "(" #50 <argumentos> #52 ")" #51;
 
 <acesso_vetor_exp> ::= "[" #32 <exp> "]" #33;
 
@@ -396,7 +396,7 @@ NOT = ID: "pas"
 
 // ---------------------------------------------------------------------------------------------------
 // Função e Procedimento
-<subrotina> ::= FUNCTION ID #1 #8 "->" <tipo_subrotina> #16 <parametros> #14 #17 <bloco_opcional>; 
+<subrotina> ::= FUNCTION ID #1 #8 "->" <tipo_subrotina> #16 <parametros> #14 #17 #53 <bloco_opcional> #54; 
 
 <tipo_subrotina> ::= <tipo_dado> 
                     | VOID #2;
@@ -423,7 +423,7 @@ NOT = ID: "pas"
 // ---------------------------------------------------------------------------------------------------
 // Chamada de Funcão
 
-<chamada> ::= ID #1 "(" <argumentos> ")" #12;
+<chamada> ::= ID #1 "(" #50 <argumentos> #52 ")" #55;
 
 <argumentos> ::= <exp> #7 <lista_argumentos> | î;
 <lista_argumentos> ::= "," <exp> #7 <lista_argumentos> | î;

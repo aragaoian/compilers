@@ -98,6 +98,10 @@ void MainWindow::setupLayout() {
 
     editor->setFont(monoFont);
     editor->setPlaceholderText("Digite o codigo fonte aqui...");
+    editor->setPlainText("fn main->ent(){\n"
+                         "    st << 67;\n"
+                         "    retour 0;\n"
+                         "}");
 
     output->setFont(monoFont);
     output->setReadOnly(true);

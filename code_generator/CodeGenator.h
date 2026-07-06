@@ -14,6 +14,7 @@ class CodeGenerator {
   private:
     std::vector<std::string> data;
     std::vector<std::string> text;
+    std::vector<std::string> extraData;
     std::vector<std::string> currDeferringTexts;
     std::stack<std::vector<std::string>> deferredTexts;
     // NOTE
@@ -35,6 +36,7 @@ class CodeGenerator {
     std::string generateWithSymbols(const std::vector<SymbolRow> &symbols);
     void clear();
     void newLine();
+    void emitData(const std::string &line);
     void beginDeferredText();
     void endDeferredText();
     void flushDeferredText();
@@ -54,5 +56,9 @@ class CodeGenerator {
     void subi(int value);
 
     void label(std::string l);
+    void jump(std::string label);
+    void call(std::string label);
+    void ret();
+    void halt();
     void branching(BuildingStructure bb, Operators op, std::string label);
 };

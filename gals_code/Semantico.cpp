@@ -53,6 +53,12 @@
 #define RETURN_FOR 47
 #define GUARDA_OPERADOR_ATRIBUICAO 48
 #define ABRE_ESCOPO_FOR 49
+#define INICIA_CHAMADA_SUBROTINA 50
+#define FINALIZA_CHAMADA_SUBROTINA 51
+#define FINALIZA_ARGUMENTOS 52
+#define INICIA_CORPO_SUBROTINA 53
+#define FINALIZA_CORPO_SUBROTINA 54
+#define FINALIZA_CHAMADA_COMANDO 55
 
 static std::string varTypeEnumToString(VariableTypes varType) {
     switch (varType) {
@@ -217,7 +223,8 @@ void Semantico::emitLoadValue(const SemanticValue &value, const Token *token) {
     }
 
     if (value.kind == ValueKind::VARIABLE || value.kind == ValueKind::EXPRESSION) {
-        codeGenerator.load(value.lexeme);
+        codeGenerator.load(value.kind == ValueKind::VARIABLE ? storageLabelFor(value.lexeme, token)
+                                                              : value.lexeme);
         return;
     }
 
@@ -232,12 +239,14 @@ void Semantico::emitLoadValue(const SemanticValue &value, const Token *token) {
 
 void Semantico::emitApplyOperator(Operators op, const SemanticValue &value, const Token *token) {
     if (value.kind == ValueKind::VARIABLE || value.kind == ValueKind::EXPRESSION) {
+        std::string operand = value.kind == ValueKind::VARIABLE ? storageLabelFor(value.lexeme, token)
+                                                                : value.lexeme;
         if (op == Operators::SUM) {
-            codeGenerator.add(value.lexeme);
+            codeGenerator.add(operand);
             return;
         }
         if (op == Operators::SUB) {
-            codeGenerator.sub(value.lexeme);
+            codeGenerator.sub(operand);
             return;
         }
     }
@@ -260,7 +269,7 @@ void Semantico::emitApplyOperator(Operators op, const SemanticValue &value, cons
 void Semantico::emitStoreInitializedValue(const std::string &id, const SemanticValue &value,
                                           const Token *token) {
     emitLoadValue(value, token);
-    codeGenerator.store(id);
+    codeGenerator.store(storageLabelFor(id, token));
     codeGenerator.newLine();
     freeExpressionTemp(value);
 }
@@ -321,11 +330,149 @@ void Semantico::emitCompoundAssignment(const std::string &id, const MetaData *me
     }
 
     materializeAccumulator(value);
-    codeGenerator.load(id);
+    codeGenerator.load(storageLabelFor(id, token));
     emitApplyOperator(pendingAssignmentOperator, value, token);
-    codeGenerator.store(id);
+    codeGenerator.store(storageLabelFor(id, token));
     codeGenerator.newLine();
     freeExpressionTemp(value);
+}
+
+std::string Semantico::functionLabel(const std::string &functionName, int sequence) const {
+    return "function_" + functionName + "_" + std::to_string(sequence);
+}
+
+std::string Semantico::parameterLabel(const std::string &paramName, const MetaData &metadata) const {
+    return "param_" + paramName + "_" + std::to_string(metadata.sequence) + "_" +
+           metadata.ownerFunction;
+}
+
+std::string Semantico::variableLabel(const std::string &varName, const MetaData &metadata) const {
+    std::string owner = metadata.ownerFunction.empty() ? "global" : metadata.ownerFunction;
+    return "var_" + varName + "_" + owner;
+}
+
+std::string Semantico::variableLabelForCurrentContext(const std::string &varName) const {
+    std::string owner = currentFunctionName.empty() ? "global" : currentFunctionName;
+    return "var_" + varName + "_" + owner;
+}
+
+std::string Semantico::returnLabel(const std::string &functionName, int sequence) const {
+    return "return_" + functionName + "_" + std::to_string(sequence);
+}
+
+std::string Semantico::storageLabelFor(const std::string &id, const Token *token) {
+    MetaData *metadata = stManager.returnMetaData(id, currentScope);
+    if (metadata == nullptr) {
+        if (isPendingDeclarationId(id)) {
+            return variableLabelForCurrentContext(id);
+        }
+        throw SemanticError("Identificador " + id + " não foi declarado.", token->getPosition());
+    }
+    if (metadata->varType == VariableTypes::PARAMETER) {
+        return parameterLabel(id, *metadata);
+    }
+    if (metadata->varType == VariableTypes::SCALAR || metadata->varType == VariableTypes::ARRAY) {
+        return variableLabel(id, *metadata);
+    }
+    return id;
+}
+
+bool Semantico::isPendingDeclarationId(const std::string &id) const {
+    return std::find(pendingIds.begin(), pendingIds.end(), id) != pendingIds.end();
+}
+
+std::vector<SymbolRow> Semantico::parametersForFunction(const std::string &functionName) const {
+    std::vector<SymbolRow> params;
+    for (const SymbolRow &row : stManager.collectSymbolsPreorder()) {
+        if (row.varType == VariableTypes::PARAMETER && row.ownerFunction == functionName) {
+            params.push_back(row);
+        }
+    }
+    std::sort(params.begin(), params.end(),
+              [](const SymbolRow &left, const SymbolRow &right) {
+                  return left.sequence < right.sequence;
+              });
+    return params;
+}
+
+void Semantico::finishFunctionCall(bool pushReturnValue, const Token *token) {
+    if (pendingCallName.empty()) {
+        throw SemanticError("Chamada de sub-rotina inválida.", token->getPosition());
+    }
+
+    MetaData *functionMetadata = stManager.returnMetaData(pendingCallName, currentScope);
+    if (functionMetadata == nullptr || functionMetadata->varType != VariableTypes::FUNCTION) {
+        std::string name = pendingCallName;
+        pendingCallName.clear();
+        pendingArgs.clear();
+        throw SemanticError("A rotina " + name + " não existe.", token->getPosition());
+    }
+    stManager.useSymbol(pendingCallName, currentScope);
+
+    std::vector<SymbolRow> params = parametersForFunction(pendingCallName);
+    if (params.size() != pendingArgs.size()) {
+        std::string message = "A função " + pendingCallName + " esperava " +
+                              std::to_string(params.size()) + " parâmetro(s) e recebeu " +
+                              std::to_string(pendingArgs.size()) + ".";
+        pendingCallName.clear();
+        pendingArgs.clear();
+        throw SemanticError(message, token->getPosition());
+    }
+
+    for (std::size_t i = 0; i < params.size(); i++) {
+        const SymbolRow &param = params[i];
+        SemanticValue arg = pendingArgs[i];
+        CompatibilityResult comp = checkAssignmentCompatibility(param.dataType, arg.dataType);
+        if (comp == CompatibilityResult::Error) {
+            std::string message = "Argumento " + std::to_string(i + 1) + " da função " +
+                                  pendingCallName + " tem tipo incompatível.";
+            pendingCallName.clear();
+            pendingArgs.clear();
+            throw SemanticError(message, token->getPosition());
+        }
+        if (comp == CompatibilityResult::Warn) {
+            logWarning("Compatibilidade de tipos com aviso em argumento de função.", token);
+        }
+
+        emitLoadValue(arg, token);
+        MetaData paramMeta;
+        paramMeta.varType = param.varType;
+        paramMeta.dataType = param.dataType;
+        paramMeta.arrSize = param.arrSize;
+        paramMeta.ownerFunction = param.ownerFunction;
+        paramMeta.sequence = param.sequence;
+        codeGenerator.store(parameterLabel(param.symbol, paramMeta));
+        freeExpressionTemp(arg);
+    }
+
+    codeGenerator.call(functionLabel(pendingCallName, functionMetadata->sequence));
+    codeGenerator.newLine();
+
+    if (pushReturnValue) {
+        if (functionMetadata->dataType == DataTypes::VOID) {
+            std::string name = pendingCallName;
+            pendingCallName.clear();
+            pendingArgs.clear();
+            throw SemanticError("Função " + name + " não retorna valor.", token->getPosition());
+        }
+        SemanticValue returnValue{functionMetadata->dataType,
+                                  returnLabel(pendingCallName, functionMetadata->sequence),
+                                  ValueKind::EXPRESSION};
+        if (inInitContext) {
+            declLiterals.push(returnValue);
+        } else {
+            literals.push(returnValue);
+        }
+    }
+
+    pendingCallName.clear();
+    pendingArgs.clear();
+}
+
+void Semantico::validateMainFunction() const {
+    if (!hasMainFunction) {
+        throw SemanticError("A função main não foi declarada.");
+    }
 }
 
 void Semantico::reset() {
@@ -373,7 +520,12 @@ void Semantico::reset() {
     pendingArgs.clear();
 
     currentFunctionName.clear();
+    currentFunctionSequence = -1;
+    functionCounter = 1;
+    hasMainFunction = false;
+    currentFunctionHasReturn = false;
     currentReturnType = DataTypes::VOID;
+    pendingCallName.clear();
 
     while (!operators.empty()) {
         operators.pop();
@@ -477,6 +629,12 @@ void Semantico::executeAction(int action, const Token *token) {
         variableTypes.push(VariableTypes::FUNCTION);
         if (!ids.empty()) {
             currentFunctionName = ids.top();
+            if (currentFunctionName == "main") {
+                currentFunctionSequence = 0;
+                hasMainFunction = true;
+            } else {
+                currentFunctionSequence = functionCounter++;
+            }
         }
         break;
 
@@ -547,7 +705,7 @@ void Semantico::executeAction(int action, const Token *token) {
             codeGenerator.store("$indr");
             codeGenerator.freeTemp(pendingVectorAssignmentIndexTemp);
             codeGenerator.load(valueTemp);
-            codeGenerator.storeVector(id);
+            codeGenerator.storeVector(storageLabelFor(id, token));
             codeGenerator.freeTemp(valueTemp);
             codeGenerator.newLine();
 
@@ -574,6 +732,17 @@ void Semantico::executeAction(int action, const Token *token) {
         ids.pop();
 
         if (!stManager.validateVariableScope(id, currentScope)) {
+            if (isPendingDeclarationId(id)) {
+                DataTypes pendingType = dataTypes.empty() ? DataTypes::VOID : dataTypes.top();
+                messages.push_back("[AVISO] " + id +
+                                   " não foi inicializado(a), usando lixo de memória.");
+                if (inInitContext) {
+                    declLiterals.push({pendingType, id, ValueKind::VARIABLE});
+                } else {
+                    literals.push({pendingType, id, ValueKind::VARIABLE});
+                }
+                break;
+            }
             std::string formattedError = "Variável " + id + " está fora do escopo!";
             throw SemanticError(formattedError, token->getPosition());
         }
@@ -638,6 +807,7 @@ void Semantico::executeAction(int action, const Token *token) {
                 pmt.dataType = dataTypes.top();
                 dataTypes.pop();
                 pmt.ownerFunction = currentFunctionName;
+                pmt.isInitialized = true;
                 pmt.sequence = i + 1;
 
                 if (paramKind == VariableTypes::ARRAY) {
@@ -718,6 +888,7 @@ void Semantico::executeAction(int action, const Token *token) {
 
         if (mt.varType == VariableTypes::FUNCTION) {
             currentReturnType = mt.dataType;
+            mt.sequence = currentFunctionSequence;
         }
 
         if (mt.varType == VariableTypes::ARRAY) {
@@ -733,6 +904,7 @@ void Semantico::executeAction(int action, const Token *token) {
         }
 
         if (mt.varType != VariableTypes::FUNCTION) {
+            mt.ownerFunction = currentFunctionName.empty() ? "global" : currentFunctionName;
             int idCount = pendingIdsCount > 0 ? pendingIdsCount : 1;
             int initCount = isInitialized ? pendingInitCount : 0;
 
@@ -864,6 +1036,7 @@ void Semantico::executeAction(int action, const Token *token) {
 
             pendingIdsCount = 0;
             pendingInitCount = 0;
+            pendingIds.clear();
             isInitialized = false;
             break;
         }
@@ -942,9 +1115,6 @@ void Semantico::executeAction(int action, const Token *token) {
             }
         }
 
-        if (mt.varType == VariableTypes::FUNCTION) {
-            currentFunctionName.clear();
-        }
         break;
     }
 
@@ -1001,6 +1171,9 @@ void Semantico::executeAction(int action, const Token *token) {
 
     case CONTA_ID_PENDENTE:
         pendingIdsCount++;
+        if (!ids.empty()) {
+            pendingIds.push_back(ids.top());
+        }
         break;
 
     case CONTA_INIT_PENDENTE:
@@ -1281,11 +1454,33 @@ void Semantico::executeAction(int action, const Token *token) {
         break;
 
     case AVALIA_RETORNO: {
+        if (currentReturnType == DataTypes::VOID) {
+            if (!literals.empty()) {
+                throw SemanticError("Função void não deve retornar valor.", token->getPosition());
+            }
+            codeGenerator.ret();
+            codeGenerator.newLine();
+            break;
+        }
+
+        if (literals.empty()) {
+            throw SemanticError("Retorno sem valor em função não-void.", token->getPosition());
+        }
+
         auto returnType = literals.top();
         literals.pop();
         if (currentReturnType != returnType.dataType) {
             throw SemanticError("Tipo do retorno é incompatível com o tipo da função.");
         }
+        emitLoadValue(returnType, token);
+        codeGenerator.store(returnLabel(currentFunctionName, currentFunctionSequence));
+        if (currentFunctionName == "main") {
+            codeGenerator.halt();
+        } else {
+            codeGenerator.ret();
+        }
+        currentFunctionHasReturn = true;
+        codeGenerator.newLine();
         break;
     }
 
@@ -1293,9 +1488,9 @@ void Semantico::executeAction(int action, const Token *token) {
         for (const SemanticValue &sv : inputSemanticValues) {
             codeGenerator.load("$in_port");
             if (sv.kind == ValueKind::VECTOR_ACCESS) {
-                codeGenerator.storeVector(sv.lexeme);
+                codeGenerator.storeVector(storageLabelFor(sv.lexeme, token));
             } else {
-                codeGenerator.store(sv.lexeme);
+                codeGenerator.store(storageLabelFor(sv.lexeme, token));
             }
             codeGenerator.newLine();
         }
@@ -1309,9 +1504,9 @@ void Semantico::executeAction(int action, const Token *token) {
             if (sv.kind == ValueKind::VECTOR_ACCESS) {
                 MetaData *meta = stManager.returnMetaData(sv.lexeme, currentScope);
                 if (meta != nullptr && meta->arrSize == 1) {
-                    codeGenerator.load(sv.lexeme);
+                    codeGenerator.load(storageLabelFor(sv.lexeme, token));
                 } else {
-                    codeGenerator.loadVector(sv.lexeme);
+                    codeGenerator.loadVector(storageLabelFor(sv.lexeme, token));
                 }
             } else {
                 emitLoadValue(sv, token);
@@ -1437,9 +1632,9 @@ void Semantico::executeAction(int action, const Token *token) {
         codeGenerator.store("$indr");
         freeExpressionTemp(index);
         if (meta->arrSize == 1) {
-            codeGenerator.load(id);
+            codeGenerator.load(storageLabelFor(id, token));
         } else {
-            codeGenerator.loadVector(id);
+            codeGenerator.loadVector(storageLabelFor(id, token));
         }
 
         std::string valueTemp = codeGenerator.getFreeTemp();
@@ -1654,6 +1849,53 @@ void Semantico::executeAction(int action, const Token *token) {
         break;
     }
 
+    case INICIA_CHAMADA_SUBROTINA:
+        if (ids.empty()) {
+            throw SemanticError("Chamada de sub-rotina inválida.", token->getPosition());
+        }
+        pendingCallName = ids.top();
+        ids.pop();
+        pendingArgs.clear();
+        break;
+
+    case FINALIZA_ARGUMENTOS:
+        break;
+
+    case FINALIZA_CHAMADA_SUBROTINA:
+        finishFunctionCall(true, token);
+        break;
+
+    case FINALIZA_CHAMADA_COMANDO:
+        finishFunctionCall(false, token);
+        break;
+
+    case INICIA_CORPO_SUBROTINA:
+        if (currentFunctionName.empty()) {
+            throw SemanticError("Corpo de sub-rotina inválido.", token->getPosition());
+        }
+        currentFunctionHasReturn = false;
+        codeGenerator.label(functionLabel(currentFunctionName, currentFunctionSequence));
+        break;
+
+    case FINALIZA_CORPO_SUBROTINA:
+        if (!currentFunctionHasReturn) {
+            if (currentReturnType != DataTypes::VOID) {
+                messages.push_back("[AVISO] Função " + currentFunctionName +
+                                   " não retorna valor");
+            }
+            if (currentFunctionName == "main") {
+                codeGenerator.halt();
+            } else {
+                codeGenerator.ret();
+            }
+            codeGenerator.newLine();
+        }
+        currentFunctionName.clear();
+        currentFunctionSequence = -1;
+        currentReturnType = DataTypes::VOID;
+        currentFunctionHasReturn = false;
+        break;
+
     default:
         break;
     }
@@ -1664,6 +1906,7 @@ std::vector<SymbolRow> Semantico::getSymbolRows() const {
 }
 
 std::string Semantico::getGeneratedCode() {
+    validateMainFunction();
     return codeGenerator.generateWithSymbols(stManager.collectSymbolsPreorder());
 }
 
@@ -1671,6 +1914,8 @@ void Semantico::logDeclaredButNotUsed() {
     std::vector<SymbolRow> symbols = stManager.collectSymbolsPreorder();
     for (SymbolRow symbol : symbols) {
         if (symbol.isUsed)
+            continue;
+        if (symbol.varType == VariableTypes::FUNCTION && symbol.symbol == "main")
             continue;
         std::string formatted = "[AVISO] " + varTypeEnumToString(symbol.varType) + " " +
                                 symbol.symbol + " está declarada mas não está sendo utilizada.";
