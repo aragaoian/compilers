@@ -526,6 +526,7 @@ void Semantico::reset() {
     currentFunctionHasReturn = false;
     currentReturnType = DataTypes::VOID;
     pendingCallName.clear();
+    isReadingArgs = false;
 
     while (!operators.empty()) {
         operators.pop();
@@ -570,8 +571,8 @@ void Semantico::logWarning(const std::string &message, const Token *token) {
 }
 
 void Semantico::executeAction(int action, const Token *token) {
-    std::cout << "Ação: " << action << ", Token: " << token->getId()
-              << ", Lexema: " << token->getLexeme() << std::endl;
+    // std::cout << "Ação: " << action << ", Token: " << token->getId()
+    //           << ", Lexema: " << token->getLexeme() << std::endl;
 
     switch (action) {
     case GUARDA_ID:
@@ -623,6 +624,7 @@ void Semantico::executeAction(int action, const Token *token) {
             pendingArgs.push_back(literals.top());
             literals.pop();
         }
+        std::cout << "Tipo arg" << pendingArgs.size() << std::endl;
         break;
 
     case TIPO_FUNCAO:
@@ -753,23 +755,6 @@ void Semantico::executeAction(int action, const Token *token) {
 
         MetaData *mt = stManager.returnMetaData(id, currentScope);
         if (mt != nullptr) {
-            if (!pendingArgs.empty()) {
-                if (mt->varType != VariableTypes::FUNCTION) {
-                    pendingArgs.clear();
-                    throw SemanticError("Identificador " + id + " não é uma função.",
-                                        token->getPosition());
-                }
-
-                pendingArgs.clear();
-                SemanticValue returnValue{mt->dataType, "", ValueKind::EXPRESSION};
-                if (inInitContext) {
-                    declLiterals.push(returnValue);
-                } else {
-                    literals.push(returnValue);
-                }
-                break;
-            }
-
             if (inInitContext) {
                 declLiterals.push({mt->dataType, id, ValueKind::VARIABLE});
             } else {
@@ -808,7 +793,11 @@ void Semantico::executeAction(int action, const Token *token) {
                 dataTypes.pop();
                 pmt.ownerFunction = currentFunctionName;
                 pmt.isInitialized = true;
-                pmt.sequence = i + 1;
+                // NOTE
+                // Isso aqui é um fix temporário
+                // Precisa fazer igual a decleração de vars
+                // invertendo a ordem da stack (mas o buraco é mais embaixo)
+                pmt.sequence = currFuncParamatersCounter - i;
 
                 if (paramKind == VariableTypes::ARRAY) {
                     if (arrSizes.empty()) {
@@ -1856,9 +1845,11 @@ void Semantico::executeAction(int action, const Token *token) {
         pendingCallName = ids.top();
         ids.pop();
         pendingArgs.clear();
+        isReadingArgs = true;
         break;
 
     case FINALIZA_ARGUMENTOS:
+        isReadingArgs = false;
         break;
 
     case FINALIZA_CHAMADA_SUBROTINA:

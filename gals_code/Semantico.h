@@ -102,6 +102,7 @@ class Semantico {
     DataTypes currentReturnType = DataTypes::VOID;
     std::vector<SemanticValue> pendingArgs;
     std::string pendingCallName;
+    bool isReadingArgs = false;
 
     std::stack<Operators> operators;
     std::stack<Operators> conditionsOperator;
